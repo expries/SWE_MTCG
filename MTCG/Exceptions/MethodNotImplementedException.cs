@@ -1,15 +1,17 @@
 using System;
+using MTCG.Server;
 
 namespace MTCG.Exceptions
 {
-    public class MethodNotImplementedException : Exception
+    public class MethodNotImplementedException : HttpException
     {
-        public MethodNotImplementedException() {}
+        public MethodNotImplementedException()
+            : base (HttpStatus.NotImplemented) {}
 
         public MethodNotImplementedException(string message)
-            : base(message) {}
+            : base(HttpStatus.NotImplemented, message) {}
 
         public MethodNotImplementedException(string message, Exception inner)
-            : base(message, inner) {}
+            : base(HttpStatus.NotImplemented, message, inner) {}
     }
 }

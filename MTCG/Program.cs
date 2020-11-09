@@ -1,4 +1,7 @@
-﻿using MTCG.Exceptions;
+﻿using MTCG.Contracts;
+using MTCG.Contracts.Requests;
+using MTCG.Controllers;
+using static MTCG.Mappers.Mapper;
 using MTCG.Server;
 
 namespace MTCG
@@ -8,12 +11,15 @@ namespace MTCG
         static void Main(string[] args)
         {
             var server = new WebServer();
+            var userController = new UserController();
 
-            server.RegisterRoute("GET", "/", context => new ResponseContext
+            server.RegisterRoute("POST", "/users", context =>
             {
-                Status = HttpStatus.Ok,
-                Content = "Landing page!",
-                ContentType = MediaType.Plaintext
+                return userController.Register(MapJsonTo<RegistrationRequest>(context.Content));
+            });
+            server.RegisterRoute("POST", "/sessions", context =>
+            {
+                return userController.Login(MapJsonTo<LoginRequest>(context.Content));
             });
 
             server.Start();

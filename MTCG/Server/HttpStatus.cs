@@ -10,6 +10,7 @@ namespace MTCG.Server
         BadRequest          = 400,
         Unauthorized        = 401,
         NotFound            = 404,
+        Conflict            = 409,
         InternalServerError = 500,
         NotImplemented      = 501,
     };
@@ -37,6 +38,7 @@ namespace MTCG.Server
                 HttpStatus.BadRequest          => "Bad Request",
                 HttpStatus.NoContent           => "No Content",
                 HttpStatus.NotFound            => "Not Found",
+                HttpStatus.Conflict            => "Conflict",
                 HttpStatus.NotImplemented      => "Not Implemented",
                 HttpStatus.InternalServerError => "Internal Server Error",
                 _                              => null

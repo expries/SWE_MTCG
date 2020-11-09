@@ -1,15 +1,17 @@
 using System;
+using MTCG.Server;
 
 namespace MTCG.Exceptions
 {
-    public class BadRequestException : Exception
+    public class BadRequestException : HttpException
     {
-        public BadRequestException() {}
+        public BadRequestException() 
+            : base (HttpStatus.BadRequest) {}
 
         public BadRequestException(string message)
-            : base(message) {}
+            : base (HttpStatus.BadRequest, message) {}
 
         public BadRequestException(string message, Exception inner)
-            : base(message, inner) {}
+            : base (HttpStatus.BadRequest, message, inner) {}
     }
 }

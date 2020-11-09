@@ -198,7 +198,7 @@ namespace MTCG.Test
             };
 
             // act
-            _server.RegisterRoute("GET", "/resource", _ => throw new ResourceNotFoundException());
+            _server.RegisterRoute("GET", "/resource", _ => throw new NotFoundException());
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
             _server.Listen(_tcpListener.Object);

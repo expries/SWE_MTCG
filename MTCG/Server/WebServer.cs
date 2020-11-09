@@ -88,37 +88,19 @@ namespace MTCG.Server
                 request.PathParam = UriMatcher.GetParameters(request.Path, endpoint);
                 response = InvokeRoute(endpoint, request);
             }
-            catch (BadRequestException error)  // request format is invalid
+            catch (HttpException error)
             {
-                response.Status = HttpStatus.BadRequest;
-                response.Content = error.Message;
-                response.ContentType = MediaType.Plaintext;
-            }
-            catch (EndpointNotFoundException error)  // endpoint does not exist
-            {
-                response.Status = HttpStatus.NotFound;
-                response.Content = error.Message;
-                response.ContentType = MediaType.Plaintext;
-            }
-            catch (ResourceNotFoundException error)  // resource does not exist (e.g. no message with given ID)
-            {
-                response.Status = HttpStatus.NotFound;
-                response.Content = error.Message;
-                response.ContentType = MediaType.Plaintext;
-            }
-            catch (MethodNotImplementedException error)  // endpoint does not support method (GET, POST, etc.)
-            {
-                response.Status = HttpStatus.NotImplemented;
+                response.Status = error.Status;
                 response.Content = error.Message;
                 response.ContentType = MediaType.Plaintext;
             }
             catch
             {
                 response.Status = HttpStatus.InternalServerError;
-                response.Content = "An error has occurred.";
+                response.Content = "An error has occurred";
                 response.ContentType = MediaType.Plaintext;
             }
-
+            
             return response;
         }
 
@@ -133,7 +115,7 @@ namespace MTCG.Server
                     return endpoint;
                 }
             }
-            throw new EndpointNotFoundException("Requested endpoint does not exist.");
+            throw new NotFoundException("Requested endpoint does not exist.");
         }
         
         // invoke handler for given endpoint and method
@@ -141,7 +123,7 @@ namespace MTCG.Server
         {
             if (!_routes.ContainsKey(endpoint))
             {
-                throw new EndpointNotFoundException("Requested endpoint does not exist.");
+                throw new NotFoundException("Requested endpoint does not exist.");
             }
             if (!_routes[endpoint].ContainsKey(request.Method))
             {
