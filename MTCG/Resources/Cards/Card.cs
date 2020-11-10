@@ -4,12 +4,13 @@ namespace MTCG.Resources.Cards
 {
     public abstract class Card
     {
+        public Guid Id { get; set; }
         public string Name { get; }
         public double Damage { get; set; }
         public Element Element { get; protected set; }
         protected internal CardType CardType { get; set; }
 
-        protected Card(string name, double damage)
+        public Card(Guid id, string name, double damage)
         {
             if (string.IsNullOrEmpty(name))
             {
@@ -20,9 +21,12 @@ namespace MTCG.Resources.Cards
                 throw new ArgumentOutOfRangeException(nameof(damage), "Damage may not be less than zero!");
             }
             
+            Id = id;
             Name = name;
             Damage = damage;
         }
+
+        protected Card(string name, double damage) : this(Guid.Empty, name, damage) {}
 
         public virtual bool Attack(Card defender)
         {

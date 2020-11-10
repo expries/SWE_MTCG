@@ -23,7 +23,7 @@ namespace MTCG.Test
             // arrange
             var request = new CardCreationRequest
             {
-                Name = "Goblin",
+                Name = "WaterSpell",
                 Damage = 10.0,
                 Weakness = 10.0,
                 Id = Guid.NewGuid()
@@ -36,7 +36,6 @@ namespace MTCG.Test
             Assert.AreEqual(request.Id, card.Id);
             Assert.AreEqual(request.Name, card.Name);
             Assert.AreEqual(request.Damage, card.Damage);
-            Assert.AreEqual(request.Weakness, card.Weakness);
         }
 
         [Test]
@@ -60,29 +59,6 @@ namespace MTCG.Test
         }
 
         [Test]
-        public void Test_CreateCardCollection_ReturnsNumberOfCreatedCards()
-        {
-            // arrange
-            var requestList = new List<CardCreationRequest>();
-            for (int i = 0; i < 10; i++)
-            {
-                requestList.Add(new CardCreationRequest
-                {
-                    Id = Guid.NewGuid(),
-                    Damage = 10.0 * i,
-                    Name = "Goblin " + i.ToString(),
-                    Weakness = 30.0
-                });
-            }
-            
-            // act
-            int createdCards = _repository.CreateCardCollection(requestList);
-            
-            // assert
-            Assert.AreEqual(10, createdCards);
-        }
-        
-        [Test]
         public void Test_GetCard_ReturnsCardIfItWasFound()
         {
             // arrange
@@ -90,19 +66,17 @@ namespace MTCG.Test
             {
                 Name = "Goblin",
                 Damage = 10.0,
-                Weakness = 10.0,
                 Id = Guid.NewGuid()
             };
 
             // act
-            _repository.CreateCard(request.Id, request.Name, request.Damage, request.Weakness);
+            _repository.CreateCard(request.Id, request.Name, request.Damage);
             var card = _repository.GetCard(request.Id);
             
             // assert
             Assert.AreEqual(request.Id, card.Id);
             Assert.AreEqual(request.Name, card.Name);
             Assert.AreEqual(request.Damage, card.Damage);
-            Assert.AreEqual(request.Weakness, card.Weakness);
         }
 
         [Test]
@@ -119,12 +93,12 @@ namespace MTCG.Test
         }
         
         [Test]
-        public bool Test_DeleteCard_ReturnsTrueIfCardWasDeleted()
+        public void Test_DeleteCard_ReturnsTrueIfCardWasDeleted()
         {
             // arrange
             var request = new CardCreationRequest
             {
-                Name = "Goblin",
+                Name = "WaterSpell",
                 Damage = 10.0,
                 Weakness = 10.0,
                 Id = Guid.NewGuid()
@@ -139,7 +113,7 @@ namespace MTCG.Test
         }
         
         [Test]
-        public bool Test_DeleteCard_ReturnsFalseIfCardDoesNotExist()
+        public void Test_DeleteCard_ReturnsFalseIfCardDoesNotExist()
         {
             // arrange
             var id = Guid.NewGuid();
