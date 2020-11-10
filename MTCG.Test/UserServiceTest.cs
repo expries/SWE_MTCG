@@ -117,7 +117,7 @@ namespace MTCG.Test
         }
 
         [Test]
-        public void Test_Login_ReturnsSuccess()
+        public void Test_Login_ReturnsSuccessIfCredentialsAreCorrect()
         {
             // arrange
             var request = new LoginRequest { Username = "kienboec", Password = "daniel" };
@@ -134,7 +134,7 @@ namespace MTCG.Test
         }
 
         [Test]
-        public void Test_Login_ReturnsFalse()
+        public void Test_Login_ReturnsNoSuccessIfCredentialsAreIncorrect()
         {
             // arrange
             var request = new LoginRequest { Username = "kienboec", Password = "daniel" };

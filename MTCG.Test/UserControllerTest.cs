@@ -35,15 +35,15 @@ namespace MTCG.Test
             const HttpStatus status = HttpStatus.Created;
             const string contentType = MediaType.Plaintext;
             
-            var registrationResponse = new RegistrationResponse
-            {
-                Success = true, 
-                Token = Guid.NewGuid().ToString()
-            };
             var registrationRequest = new RegistrationRequest
             {
                 Username = "kienboec",
                 Password = "daniel"
+            };
+            var registrationResponse = new RegistrationResponse
+            {
+                Success = true, 
+                Token = Guid.NewGuid().ToString()
             };
 
             Service.Setup(service => service.Register(It.IsAny<RegistrationRequest>()))
