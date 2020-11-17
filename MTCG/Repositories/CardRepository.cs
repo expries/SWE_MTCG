@@ -1,64 +1,34 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using MTCG.Resources.Cards;
 using MTCG.Resources.Cards.MonsterCards;
 using MTCG.Resources.Cards.SpellCards;
 
 namespace MTCG.Repositories
 {
-    public class CardRepository
+    public class CardRepository : ICardRepository
     {
-        private Dictionary<Guid, Card> _cards;
+        private readonly Dictionary<Guid, Card> _cards;
 
         public CardRepository()
         {
             _cards = new Dictionary<Guid, Card>();
         }
 
-        public Card CreateCard(string name, double damage)
+        public Card CreateCard(Card card)
         {
-            var id = Guid.NewGuid();
-            return CreateCard(id, name, damage);
-        }
-
-        public Card CreateCard(string name, double damage, double weakness)
-        {
-            var id = Guid.NewGuid();
-            return CreateCard(id, name, damage, weakness);
-        }
-
-        public Card CreateCard(Guid id, string name, double damage)
-        {
-            if (_cards.ContainsKey(id))
+            if (card == null)
             {
                 return null;
             }
             
-            Card card = new Goblin(name, damage);
-            card.Id = id;
-            _cards.Add(id, card);
-            return card;
-        }
-
-        public Card CreateCard(Guid id, string name, double damage, double weakness)
-        {
-            if (_cards.ContainsKey(id))
+            if (card.Id == Guid.Empty)
             {
-                return null;
+                card.Id = Guid.NewGuid();
             }
 
-            Card card = name switch
-            {
-                "WaterSpell" => new WaterSpell(name, damage),
-                "FireSpell" => new FireSpell(name, damage),
-                "RegularSpell" => new NormalSpell(name, damage),
-                _ => null
-            };
-
-            if (card == null) return null;
-            
-            card.Id = id;
-            _cards.Add(id, card);
+            _cards.Add(card.Id, card);
             return card;
         }
 
@@ -72,6 +42,11 @@ namespace MTCG.Repositories
         public Card GetCard(Guid id)
         {
             return _cards.ContainsKey(id) ? _cards[id] : null;
+        }
+
+        public List<Card> GetAllCards()
+        {
+            return _cards.Values.ToList();
         }
     }
 }
