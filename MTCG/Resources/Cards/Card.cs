@@ -1,24 +1,25 @@
 using System;
+using MTCG.Exceptions;
 
 namespace MTCG.Resources.Cards
 {
     public abstract class Card
     {
         public Guid Id { get; set; }
-        public string Name { get; }
-        public double Damage { get; set; }
+        public string Name { get; protected set; }
+        public double Damage { get; protected set; }
         public Element Element { get; protected set; }
-        protected internal CardType CardType { get; set; }
+        protected internal CardType CardType { get; protected set; }
 
-        public Card(Guid id, string name, double damage)
+        private Card(Guid id, string name, double damage)
         {
-            if (string.IsNullOrEmpty(name))
+            if (string.IsNullOrWhiteSpace(name))
             {
-                throw new ArgumentException("Name may not be null or empty!");
+                throw new BadRequestException("Name may not be null or empty!");
             }
             if (damage < 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(damage), "Damage may not be less than zero!");
+                throw new BadRequestException("Damage may not be less than zero!");
             }
             
             Id = id;

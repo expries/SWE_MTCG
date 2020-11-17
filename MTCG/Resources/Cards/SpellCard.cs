@@ -1,10 +1,20 @@
+using MTCG.Exceptions;
+
 namespace MTCG.Resources.Cards
 {
     public abstract class SpellCard : Card
     {
-        protected SpellCard(string name, double damage) : base(name, damage)
+        public double Weakness { get; protected set; }
+
+        protected SpellCard(string name, double damage, double weakness) : base(name, damage)
         {
+            if (weakness < 0)
+            {
+                throw new BadRequestException("Weakness has to be greater or equal to zero.");
+            }
+            
             CardType = CardType.Spellcard;
+            Weakness = weakness;
         }
         
         public override bool Attack(Card defender)
@@ -36,11 +46,11 @@ namespace MTCG.Resources.Cards
         {
             if (IsIneffectiveAgainst(attacker))
             {
-                return 0.5;  // 50%/200% of damage dealt/taken
+                return Weakness / 100;  // 50%/200% of damage dealt/taken
             }
             if (IsEffectiveAgainst(attacker))
             {
-                return 2;  // 200%/50% of damage dealt/taken
+                return 1 + Weakness / 100;  // 200%/50% of damage dealt/taken
             }
             return 1;  // 100% of damage dealt/taken
         }

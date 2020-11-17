@@ -11,7 +11,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_KnightLosesAgainstWaterSpell()
         {
             var knight = new Knight("Alan", 20);
-            var waterSpell = new WaterSpell("Water!", 1);
+            var waterSpell = new WaterSpell("Water!", 1, 0);
             bool fight = waterSpell.Attack(knight);
             Assert.IsTrue(fight);
         }
@@ -20,7 +20,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_KnightWinsAgainstWeakerSpell()
         {
             var card = new Knight("Alan", 20);
-            var fireSpell = new FireSpell("Fire!", 1);
+            var fireSpell = new FireSpell("Fire!", 1, 0);
             bool fight = fireSpell.Attack(card);
             Assert.IsFalse(fight);
         }
@@ -29,9 +29,9 @@ namespace MTCG.Test
         public void Test_AttackedBy_KrakenIsImmuneToSpells()
         {
             var kraken = new Kraken("George", 30);
-            var fireSpell = new FireSpell("Fire!", 100);
-            var waterSpell = new WaterSpell("Water!", 100);
-            var normalSpell = new NormalSpell("Normal!", 100);
+            var fireSpell = new FireSpell("Fire!", 100, 0);
+            var waterSpell = new WaterSpell("Water!", 100, 0);
+            var normalSpell = new NormalSpell("Normal!", 100, 0);
         
             bool fightNormalSpell = normalSpell.Attack(kraken);
             bool fightFireSpell = fireSpell.Attack(kraken);
@@ -46,7 +46,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_NormalMonsterIsVulnerableToFireSpell()
         {
             var goblin = new Goblin("Simon", 15);
-            var fireSpell = new FireSpell("Fire!", 15);
+            var fireSpell = new FireSpell("Fire!", 15, 100);
             bool fight = fireSpell.Attack(goblin);
             Assert.IsTrue(fight);
         }
@@ -55,7 +55,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_NormalMonsterWinsAgainstWaterSpell()
         {
             var goblin = new Goblin("Simon", 15);
-            var waterSpell = new WaterSpell("Water!", 15);
+            var waterSpell = new WaterSpell("Water!", 15, 0);
             bool fight = waterSpell.Attack(goblin);
             Assert.IsFalse(fight);
         }
@@ -64,7 +64,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_NormalMonsterWinsAgainstNormalSpell()
         {
             var goblin = new Goblin("Simon", 15);
-            var normalSpell = new NormalSpell("Normal!", 15);
+            var normalSpell = new NormalSpell("Normal!", 15, 0);
             bool fight = normalSpell.Attack(goblin);
             Assert.IsFalse(fight);
         }
@@ -73,7 +73,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_FireMonsterIsVulnerableToWaterSpell()
         {
             var fireElf = new FireElf("Angela", 25);
-            var waterSpell = new WaterSpell("Water!", 20);
+            var waterSpell = new WaterSpell("Water!", 20, 100);
             bool fight = waterSpell.Attack(fireElf);
             Assert.IsTrue(fight);
         }
@@ -82,7 +82,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_FireMonsterWinsAgainstNormalSpell()
         {
             var fireElf = new FireElf("Angela", 25);
-            var normalSpell = new NormalSpell("Normal!", 20);
+            var normalSpell = new NormalSpell("Normal!", 20, 0);
             bool fight = fireElf.Attack(normalSpell);
             Assert.IsTrue(fight);
         }
@@ -91,7 +91,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_FireMonsterWinsAgainstFireSpell()
         {
             var fireElf = new FireElf("Angela", 25);
-            var fireSpell = new FireSpell("Fire!", 20);
+            var fireSpell = new FireSpell("Fire!", 20, 0);
             bool fight = fireSpell.Attack(fireElf);
             Assert.IsFalse(fight);
         }
@@ -199,7 +199,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_MonsterLosesAgainstStrongerSpell()
         {
             var monster = new Goblin("Simon", 50);
-            Card spell = new NormalSpell("Normal!", 105);
+            Card spell = new NormalSpell("Normal!", 105, 0);
             bool fight = spell.Attack(monster);
             Assert.IsTrue(fight);
         }
@@ -224,7 +224,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_MonsterWinsAgainstWeakerSpells()
         {
             Card monster = new Goblin("Simon", 50);
-            Card spell = new NormalSpell("Normal!", 10);
+            Card spell = new NormalSpell("Normal!", 10, 0);
             bool fight = spell.Attack(monster);
             Assert.IsFalse(fight);
         }
@@ -233,7 +233,7 @@ namespace MTCG.Test
         public void Test_AttackedBy_AttackingSpellLosesAgainstEquallyStrongMonster()
         {
             Card monster = new Goblin("Simon", 20);
-            Card spell = new WaterSpell("Water!", 20);
+            Card spell = new WaterSpell("Water!", 20, 0);
             bool fight = spell.Attack(monster);
             Assert.IsFalse(fight);
         }
@@ -241,8 +241,8 @@ namespace MTCG.Test
         [Test]
         public void Test_AttackedBy_FireSpellIsVulnerableToWaterSpell()
         {
-            Card fireSpell = new FireSpell("Fire!", 10);
-            Card waterSpell = new WaterSpell("Water!", 9);
+            Card fireSpell = new FireSpell("Fire!", 10, 0);
+            Card waterSpell = new WaterSpell("Water!", 9, 0);
             bool fight = waterSpell.Attack(fireSpell);
             Assert.IsTrue(fight);
         }
@@ -250,8 +250,8 @@ namespace MTCG.Test
         [Test]
         public void Test_AttackedBy_FireSpellWinsAgainstOtherSpell()
         {
-            Card fireSpell = new FireSpell("Fire!", 10);
-            Card otherSpell = new FireSpell("Fire!", 9);
+            Card fireSpell = new FireSpell("Fire!", 10, 0);
+            Card otherSpell = new FireSpell("Fire!", 9, 0);
             bool fight = otherSpell.Attack(fireSpell);
             Assert.IsFalse(fight);
         }
@@ -259,8 +259,8 @@ namespace MTCG.Test
         [Test]
         public void Test_AttackedBy_WaterSpellIsVulnerableToNormalSpell()
         {
-            Card waterSpell = new WaterSpell("Water!", 10);
-            Card normalSpell = new NormalSpell("Normal!", 9);
+            Card waterSpell = new WaterSpell("Water!", 10, 0);
+            Card normalSpell = new NormalSpell("Normal!", 9, 0);
             bool fight = normalSpell.Attack(waterSpell);
             Assert.IsTrue(fight);
         }
@@ -268,8 +268,8 @@ namespace MTCG.Test
         [Test]
         public void Test_AttackedBy_WaterSpellWinsAgainstOtherSpell()
         {
-            var waterSpell = new WaterSpell("Water!", 10);
-            var otherSpell = new WaterSpell("Water!", 9);
+            var waterSpell = new WaterSpell("Water!", 10, 0);
+            var otherSpell = new WaterSpell("Water!", 9, 0);
             bool fight = otherSpell.Attack(waterSpell);
             Assert.IsFalse(fight);
         }
@@ -277,8 +277,8 @@ namespace MTCG.Test
         [Test]
         public void Test_AttackedBy_NormalSpellIsVulnerableToFireSpell()
         {
-            var normalSpell = new NormalSpell("Normal!", 10);
-            var fireSpell = new FireSpell("Fire!", 9);
+            var normalSpell = new NormalSpell("Normal!", 10, 0);
+            var fireSpell = new FireSpell("Fire!", 9, 0);
             bool fight = fireSpell.Attack(normalSpell);
             Assert.IsTrue(fight);
         }
@@ -286,8 +286,8 @@ namespace MTCG.Test
         [Test]
         public void Test_AttackedBy_NormalSpellWinsAgainstOtherSpell()
         {
-            var normalSpell = new NormalSpell("Normal!", 10);
-            var otherSpell = new NormalSpell("Normal!", 10);
+            var normalSpell = new NormalSpell("Normal!", 10, 0);
+            var otherSpell = new NormalSpell("Normal!", 10, 0);
             bool fight = otherSpell.Attack(normalSpell);
             Assert.IsFalse(fight);
         }

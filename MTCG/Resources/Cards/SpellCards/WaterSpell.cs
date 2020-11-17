@@ -2,7 +2,7 @@ namespace MTCG.Resources.Cards.SpellCards
 {
     public class WaterSpell : SpellCard
     {
-        public WaterSpell(string name, double damage) : base(name, damage)
+        public WaterSpell(string name, double damage, double weakness) : base(name, damage, weakness)
         {
             Element = Element.Water;
         }

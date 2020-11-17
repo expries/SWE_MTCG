@@ -2,7 +2,7 @@ namespace MTCG.Resources.Cards.SpellCards
 {
     public class FireSpell : SpellCard
     {
-        public FireSpell(string name, double damage) : base(name, damage)
+        public FireSpell(string name, double damage, double weakness) : base(name, damage, weakness)
         {
             Element = Element.Fire;
         }
