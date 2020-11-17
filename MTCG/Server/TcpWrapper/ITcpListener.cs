@@ -4,5 +4,6 @@ namespace MTCG.Server.TcpWrapper
     {
         public ITcpClient AcceptTcpClient();
         public void Start();
+        public void Stop();
     }
 }

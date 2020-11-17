@@ -1,3 +1,4 @@
+using System;
 using MTCG.Exceptions;
 using Newtonsoft.Json;
 
@@ -10,6 +11,18 @@ namespace MTCG.Mappers
             try
             {
                 return JsonConvert.DeserializeObject<TObj>(json);
+            }
+            catch
+            {
+                throw new BadRequestException();
+            }
+        }
+
+        public static Guid MapToGuid(string guid)
+        {
+            try
+            {
+                return Guid.Parse(guid);
             }
             catch
             {
