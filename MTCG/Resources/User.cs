@@ -1,28 +1,34 @@
 using System;
-using System.Threading.Tasks;
+using MTCG.Exceptions;
 
 namespace MTCG.Resources
 {
     public class User
     {
-        public int Id { get; set; }
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string Token { get; set; }
+        public string Username { get; private set; }
+        public string Password { get; private set; }
+        public Guid Token { get; set; }
+        public int Coins { get; private set; }
 
         public User(string username, string password)
         {
             if (string.IsNullOrWhiteSpace(username))
             {
-                throw new ArgumentException("Username is null or empty.");
+                throw new BadRequestException("Username may not be empty.");
             }
             if (string.IsNullOrWhiteSpace(password))
             {
-                throw new ArgumentException("Password is null or empty.");
+                throw new BadRequestException("Password may not be empty.");
             }
 
             Username = username;
             Password = password;
+            Coins = 0;
+        }
+
+        public void AddCoins(int coins)
+        {
+            Coins = Math.Max(0, Coins + coins);
         }
     }
 }
