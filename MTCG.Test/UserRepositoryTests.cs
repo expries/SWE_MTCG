@@ -1,3 +1,4 @@
+using System;
 using MTCG.Repositories;
 using NUnit.Framework;
 
@@ -38,10 +39,9 @@ namespace MTCG.Test
          
             // act
             _repository.CreateUser(username, password);
-            var user = _repository.CreateUser(username, password);
-
+            
             // assert
-            Assert.IsNull(user);
+            Assert.Throws<ArgumentException>(() => _repository.CreateUser(username, password));
         }
 
         [Test]
