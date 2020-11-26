@@ -24,7 +24,11 @@ namespace MTCG.Mappers
             {
                 return Guid.Parse(guid);
             }
-            catch
+            catch (ArgumentNullException)
+            {
+                throw new BadRequestException();
+            }
+            catch (FormatException)
             {
                 throw new BadRequestException();
             }

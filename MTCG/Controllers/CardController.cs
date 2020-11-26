@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace MTCG.Controllers
 {
-    public class CardController
+    public class CardController : ApiController
     {
         private readonly ICardRepository _cardRepository;
         
@@ -23,30 +23,15 @@ namespace MTCG.Controllers
         public ResponseContext GetAll()
         {
             var cards = _cardRepository.GetAllCards();
-            
-            return new ResponseContext
-            {
-                Status = HttpStatus.Ok,
-                ContentType = MediaType.Json,
-                Content = JsonConvert.SerializeObject(cards)
-            };
+            return Ok(JsonConvert.SerializeObject(cards), MediaType.Json);
         }
 
         public ResponseContext Get(Guid cardId)
         {
             var card = _cardRepository.GetCard(cardId);
-
-            if (card is null)
-            {
-                throw new NotFoundException("Card with this id does not exist.");
-            }
-
-            return new ResponseContext
-            {
-                Status = HttpStatus.Ok,
-                ContentType = MediaType.Json,
-                Content = JsonConvert.SerializeObject(card)
-            };
+            return card is null 
+                ? NotFound("Card with this id does not exist.") 
+                : Ok(JsonConvert.SerializeObject(card), MediaType.Json);
         }
     }
 }

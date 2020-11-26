@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using MTCG.Contracts;
 using MTCG.Contracts.Requests;
 using MTCG.Controllers;
 using MTCG.Repositories;

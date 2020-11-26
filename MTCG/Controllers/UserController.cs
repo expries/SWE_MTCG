@@ -12,7 +12,7 @@ using Newtonsoft.Json;
 
 namespace MTCG.Controllers
 {
-    public class UserController
+    public class UserController : ApiController
     {
         private readonly IUserRepository _userRepository;
         private readonly ICardRepository _cardRepository;
@@ -38,56 +38,33 @@ namespace MTCG.Controllers
         {
             if (_userRepository.GetUser(request.Username) != null)
             {
-                throw new ConflictException("Username is taken.");
+                return Conflict("Username is taken.");
             }
 
             var user = _userRepository.CreateUser(request.Username, request.Password);
-            
-            return new ResponseContext
-            {
-                Status = HttpStatus.Created,
-                ContentType = MediaType.Plaintext,
-                Content = user.Token.ToString()
-            };
+            return Created(user.Token.ToString());
         }
 
         public ResponseContext Get(string username)
         {
             var user = _userRepository.GetUser(username);
 
-            if (user == null)
-            {
-                throw new NotFoundException("User not found.");
-            }
-
-            return new ResponseContext
-            {
-                Status = HttpStatus.Ok,
-                Content = JsonConvert.SerializeObject(user),
-                ContentType = MediaType.Json
-            };
+            return user == null 
+                ? NotFound("User not found.") 
+                : Ok(JsonConvert.SerializeObject(user), MediaType.Json);
         }
 
         public ResponseContext GetAll()
         {
             var users = _userRepository.GetAllUsers();
-
-            return new ResponseContext
-            {
-                Status = HttpStatus.Ok,
-                ContentType = MediaType.Json,
-                Content = JsonConvert.SerializeObject(users)
-            };
+            return Ok(JsonConvert.SerializeObject(users), MediaType.Json);
         }
         
         public ResponseContext Login(LoginRequest request)
         {
-            if (!_userRepository.CheckCredentials(request.Username, request.Password))
-            {
-                throw new BadRequestException("No user with this username and password exists.");
-            }
-            
-            return new ResponseContext {Status = HttpStatus.Ok};
+            return !_userRepository.CheckCredentials(request.Username, request.Password) 
+                ? BadRequest("No user with this username and password exists.") 
+                : Ok();
         }
 
         public ResponseContext GetCards(string token)
@@ -96,7 +73,7 @@ namespace MTCG.Controllers
 
             if (user is null)
             {
-                throw new NotFoundException("User not found.");
+                return NotFound("User not found.");
             }
             
             var packageIds = _userRepository.GetPackageIds(user.Username);
@@ -109,12 +86,7 @@ namespace MTCG.Controllers
                 cardIds.ForEach(id => resultSet.Add(_cardRepository.GetCard(id)));
             }
 
-            return new ResponseContext
-            {
-                Status = HttpStatus.Ok,
-                ContentType = MediaType.Json,
-                Content = JsonConvert.SerializeObject(resultSet)
-            };
+            return Ok(JsonConvert.SerializeObject(resultSet), MediaType.Json);
         }
 
         public ResponseContext AcquirePackage(string token)
@@ -123,33 +95,29 @@ namespace MTCG.Controllers
             
             if (user is null)
             {
-                throw new NotFoundException("User not found.");
+                return NotFound("User not found.");
             }
 
             if (user.Coins == 0)
             {
-                throw new ConflictException("Not enough coins to purchase a package.");
+                return Conflict("Not enough coins to purchase a package.");
             }
 
             var unownedPackage = GetUnownedPackageForUser(user.Username);
 
             if (unownedPackage is null)
             {
-                throw new ConflictException("You already own all the packages.");
+                return Conflict("You already own all the packages.");
             }
 
             bool purchase = _userRepository.AcquirePackage(user.Username, unownedPackage.Id);
+            
             if (purchase)
             {
                 _userRepository.AddCoins(user.Username, unownedPackage.Size * -1);
             }
 
-            return new ResponseContext
-            {
-                Status = HttpStatus.Ok,
-                ContentType = MediaType.Plaintext,
-                Content = unownedPackage.Id.ToString()
-            };
+            return Ok(unownedPackage.Id.ToString());
         }
 
         private User GetUserByAuthToken(string token)
@@ -157,7 +125,7 @@ namespace MTCG.Controllers
             var s1 = token.Split(" ");
             if (s1.Length != 2)
             {
-                throw new BadRequestException("Invalid auth header.");
+                throw new BadRequestException();
             }
 
             var s2 = s1[1].Split("-");
@@ -185,9 +153,11 @@ namespace MTCG.Controllers
             do
             {
                 randomPackage = _packageRepository.GetRandomPackage();
-                if (randomPackage is null) return null;
+                if (randomPackage is null)
+                {
+                    return null;
+                }
                 i++;
-
             } while (ownedPackages.Contains(randomPackage.Id) && i < 100);
 
             return ownedPackages.Contains(randomPackage.Id) ? null : randomPackage;

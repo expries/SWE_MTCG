@@ -7,23 +7,39 @@ namespace MTCG.Server
     // parse HTTP requests
     public class RequestContext
     {
-        public string Method { get; set; } // GET, POST, PUT, etc.
-        public string Path { get; set; } // requested/addressed resource
-        public string Protocol { get; set; } // HTTP
-        public string Version { get; set; } // HTTP 1.0/1.1/...
-        public Dictionary<string, string> Headers { get; } // header attributes
+        // HTTP GET, POST, PUT, etc.
+        public string Method { get; set; }
+        
+        // requested/addressed resource
+        public string Path { get; set; }
+        
+        // HTTP
+        public string Protocol { get; set; }
+        
+        // which HTTP version
+        public string Version { get; set; } 
+        
+        public Dictionary<string, string> Headers { get; }
+        
         public Dictionary<string, string> PathParam { get; set; }
-        public string Content { get; set; } // payload
-        public int ContentLength => GetContentLength();  // length of content in bytes
-        public string ContentType  // accessors for header content-type
+        
+        public string Content { get; set; }
+        
+        public int ContentLength => GetContentLength();
+        
+        public string ContentType
         {
             get => GetContentType();
             set => SetContentType(value);
         }
         
-        private int ContentLengthHeader => GetContentLengthFromHeader();  // accessor for header content-length
-        private string Buffer { get; set; } // buffer header to complete lines
-        private bool HeaderComplete { get; set; } // to indicate header has been read completely
+        // get content length that is specified in header
+        private int ContentLengthHeader => GetContentLengthFromHeader();
+        
+        private string Buffer { get; set; }
+        
+        // true if end of header was encountered
+        private bool HeaderComplete { get; set; }
 
         public RequestContext()
         {
@@ -49,10 +65,12 @@ namespace MTCG.Server
             Console.WriteLine("Version = " + Version);
             Console.WriteLine("Content: " + Content);
             Console.WriteLine("Header:");
+            
             foreach ((string key, string value) in Headers)
             {
                 Console.WriteLine($"+ {key}: {value}");
             }
+            
             Console.WriteLine("");
         }
 

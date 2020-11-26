@@ -16,7 +16,8 @@ namespace MTCG.Repositories
 
         public Package CreatePackage(List<Guid> cardIds)
         {
-            var package = new Package(cardIds) {Id = Guid.NewGuid()};
+            var package = new Package(Guid.NewGuid());
+            package.SetCards(cardIds);
             _packages.Add(package.Id, package);
             return package;
         }
@@ -28,15 +29,23 @@ namespace MTCG.Repositories
 
         public bool DeletePackage(Guid id)
         {
-            if (_packages.ContainsKey(id)) return false;
+            if (_packages.ContainsKey(id))
+            {
+                return false;
+            }
+
             _packages.Remove(id);
             return true;
         }
 
         public bool UpdatePackage(Guid id, List<Guid> cardIds)
         {
-            if (!_packages.ContainsKey(id)) return false;
-            _packages[id].SetCardIds(cardIds);
+            if (!_packages.ContainsKey(id))
+            {
+                return false;
+            }
+
+            _packages[id].SetCards(cardIds);
             return true;
         }
 
@@ -48,7 +57,11 @@ namespace MTCG.Repositories
         public Package GetRandomPackage()
         {
             var packageList = _packages.Values.ToList();
-            if (!packageList.Any()) return null;
+            if (!packageList.Any())
+            {
+                return null;
+            }
+
             int randomIndex = new Random().Next(packageList.Count);
             return packageList[randomIndex];
         }

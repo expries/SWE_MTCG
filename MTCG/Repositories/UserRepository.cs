@@ -18,12 +18,10 @@ namespace MTCG.Repositories
 
         public User CreateUser(string username, string password)
         {
-            var user = new User(username, password) { Token = Guid.NewGuid() };
+            var user = new User(username, password, Guid.NewGuid());
             user.AddCoins(5);
-            
             _users.Add(user.Username, user);
             _packages.Add(user.Username, new List<Guid>());
-
             return user;
         }
 

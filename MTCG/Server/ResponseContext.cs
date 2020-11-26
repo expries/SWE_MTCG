@@ -7,11 +7,17 @@ namespace MTCG.Server
     public class ResponseContext
     {
         public string Protocol { get; set; }  // protocol used
+        
         public string Version { get; set; }  // protocol version
+        
         public HttpStatus Status { get; set; }  // HTTP Status
+        
         public Dictionary<string, string> Headers { get; }  // header attributes
+        
         public string Content { get; set; }  // payload
+        
         public int ContentLength => GetContentLength();
+        
         public string ContentType  // e.g. application/json
         {
             get => GetContentType();

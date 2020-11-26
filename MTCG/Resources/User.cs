@@ -26,6 +26,11 @@ namespace MTCG.Resources
             Coins = 0;
         }
 
+        public User(string username, string password, Guid token) : this(username, password)
+        {
+            Token = token;
+        }
+
         public void AddCoins(int coins)
         {
             Coins = Math.Max(0, Coins + coins);

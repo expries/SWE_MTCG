@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using MTCG.Exceptions;
 using Newtonsoft.Json;
 
@@ -9,6 +10,7 @@ namespace MTCG.Resources
     public class Package
     {
         public Guid Id { get; set; }
+        
         public int Size => Cards.Count;
 
         [JsonProperty("Cards")]
@@ -19,13 +21,12 @@ namespace MTCG.Resources
             Cards = new List<Guid>();
         }
 
-        public Package(List<Guid> cardIds)
+        public Package(Guid id) : this()
         {
-            Cards = new List<Guid>();
-            SetCardIds(cardIds);
+            Id = id;
         }
 
-        public void SetCardIds(List<Guid> cardIds)
+        public void SetCards(List<Guid> cardIds)
         {
             for (int i = 0; i < cardIds.Count; i++)
             {

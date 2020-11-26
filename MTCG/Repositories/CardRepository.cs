@@ -34,7 +34,11 @@ namespace MTCG.Repositories
 
         public bool DeleteCard(Guid id)
         {
-            if (!_cards.ContainsKey(id)) return false;
+            if (!_cards.ContainsKey(id))
+            {
+                return false;
+            }
+
             _cards.Remove(id);
             return true;
         }
