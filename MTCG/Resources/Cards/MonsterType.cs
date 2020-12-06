@@ -8,6 +8,7 @@ namespace MTCG.Resources.Cards
         Ork,
         Knight,
         Kraken,
-        FireElf
+        FireElf,
+        WaterGoblin
     }
 }

@@ -1,42 +1,45 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using MTCG.Exceptions;
-using Newtonsoft.Json;
+using MTCG.Resources.Cards;
 
 namespace MTCG.Resources
 {
     public class Package
     {
-        public Guid Id { get; set; }
+        public Guid Id { get; }
         
-        public int Size => Cards.Count;
-
-        [JsonProperty("Cards")]
-        public List<Guid> Cards { get; private set; }
+        public int Price => Cards.Count;
+        
+        public List<Card> Cards { get; private set; }
 
         public Package()
         {
-            Cards = new List<Guid>();
+            Cards = new List<Card>();
         }
 
         public Package(Guid id) : this()
         {
+            if (id.Equals(Guid.Empty))
+            {
+                throw new ArgumentException("Package ID may not be empty.");
+            }
+            
             Id = id;
         }
 
-        public void SetCards(List<Guid> cardIds)
+        public void AddCard(Card card)
         {
-            for (int i = 0; i < cardIds.Count; i++)
+            if (card.Id.Equals(Guid.Empty))
             {
-                if (cardIds[i] == Guid.Empty)
-                {
-                    throw new BadRequestException("Card at position " + i + " is missing an id.");
-                }
+                throw new ArgumentException("Card ID may not be empty.");
             }
-            
-            Cards = cardIds;
+
+            Cards.Add(card);
+        }
+
+        public void Clear()
+        {
+            Cards.Clear();
         }
     }
 }

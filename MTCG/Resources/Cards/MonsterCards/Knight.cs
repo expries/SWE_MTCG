@@ -10,7 +10,7 @@ namespace MTCG.Resources.Cards.MonsterCards
 
         protected internal override bool AttackedBy(Card attacker)
         {
-            if (attacker.CardType != CardType.Spellcard)
+            if (attacker.CardType != CardType.Spell)
             {
                 return base.AttackedBy(attacker);
             }

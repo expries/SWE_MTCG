@@ -19,7 +19,7 @@ namespace MTCG.Server
     // extension methods as described in
     // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/how-to-implement-and-call-a-custom-extension-method
     //
-    static class HttpStatusMethods
+    internal static class HttpStatusMethods
     {
         // get status code for given HTTP status
         public static int GetCode(this HttpStatus status)

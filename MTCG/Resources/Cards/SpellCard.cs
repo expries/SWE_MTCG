@@ -4,7 +4,7 @@ namespace MTCG.Resources.Cards
 {
     public abstract class SpellCard : Card
     {
-        public double Weakness { get; protected set; }
+        public double Weakness { get; }
 
         protected SpellCard(string name, double damage, double weakness) : base(name, damage)
         {
@@ -13,7 +13,7 @@ namespace MTCG.Resources.Cards
                 throw new BadRequestException("Weakness has to be greater or equal to zero.");
             }
             
-            CardType = CardType.Spellcard;
+            CardType = CardType.Spell;
             Weakness = weakness;
         }
         
