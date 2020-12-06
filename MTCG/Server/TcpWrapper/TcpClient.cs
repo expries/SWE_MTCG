@@ -6,17 +6,19 @@ namespace MTCG.Server.TcpWrapper
     public class TcpClient : ITcpClient
     {
         private readonly System.Net.Sockets.TcpClient _client;
+        
         public void Close() => _client.Close();
+
+        private RequestContext Request { get; set; }
 
         public TcpClient(System.Net.Sockets.TcpClient client)
         {
             _client = client;
         }
-        
-        // fetch client request
-        public RequestContext GetRequest()
+
+        public void ReadRequest()
         {
-            var request = new RequestContext();
+            Request = new RequestContext();
             var stream = _client.GetStream();
             var buffer = new byte[4096];
 
@@ -24,13 +26,16 @@ namespace MTCG.Server.TcpWrapper
             {
                 int bytesReceived = stream.Read(buffer, 0, buffer.Length);
                 string receivedString = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesReceived);
-                request.Read(receivedString);
+                Request.Read(receivedString);
 
             } while (stream.DataAvailable);
-            
-            return request;
         }
-        
+
+        public RequestContext GetRequest()
+        {
+            return Request;
+        }
+
         // send response to client
         public void SendResponse(ResponseContext response)
         {

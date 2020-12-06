@@ -6,7 +6,9 @@ namespace MTCG.Server.TcpWrapper
     public class TcpListener : ITcpListener
     {
         private readonly System.Net.Sockets.TcpListener _myListener;
+        
         public void Start() => _myListener.Start();
+        
         public void Stop() => _myListener.Stop();
         
         public TcpListener(string ip, int port)
