@@ -61,13 +61,13 @@ namespace MTCG.Controller
 
             return package is null 
                 ? NotFound("No package with this id exists.") 
-                : Ok(JsonConvert.SerializeObject(package), MediaType.Json);
+                : Ok(package);
         }
 
         public ResponseContext GetAll()
         {
             var packages = _packageRepository.GetAllPackages();
-            return Ok(JsonConvert.SerializeObject(packages), MediaType.Json);
+            return Ok(packages);
         }
     }
 }
