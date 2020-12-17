@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using MTCG.Exceptions;
+using MTCG.Exception;
 
 namespace MTCG.Server
 {

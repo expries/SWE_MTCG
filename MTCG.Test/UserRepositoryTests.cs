@@ -1,5 +1,5 @@
 using System;
-using MTCG.Repositories;
+using MTCG.Repository;
 using NUnit.Framework;
 
 namespace MTCG.Test

@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using MTCG.Contracts.Requests;
-using MTCG.Controllers;
-using MTCG.Repositories;
-using static MTCG.Mappers.Mapper;
+﻿using System.Collections.Generic;
+using MTCG.Controller;
+using MTCG.Repository;
+using MTCG.Request;
 using MTCG.Server;
 
 namespace MTCG

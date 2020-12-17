@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace MTCG.Server
 {
@@ -38,7 +37,7 @@ namespace MTCG.Server
         {
             if (Protocol == null || Version == null)
             {
-                throw new Exception("Protocol and version are mandatory.");
+                throw new System.Exception("Protocol and version are mandatory.");
             }
             
             Headers["Content-Length"] = ContentLength.ToString();

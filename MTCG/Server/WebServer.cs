@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using MTCG.Exceptions;
+using MTCG.Exception;
 using MTCG.Server.TcpWrapper;
 
 namespace MTCG.Server
@@ -189,6 +189,7 @@ namespace MTCG.Server
         private static string GetStrBetween(string str, string strStart, string strEnd)
         {
             int i = str.IndexOf(strStart, StringComparison.Ordinal);
+            
             if (i < 0)
             {
                 return string.Empty;
@@ -196,6 +197,7 @@ namespace MTCG.Server
             
             string fromParameter = str.Substring(i + 1);
             int j = fromParameter.IndexOf(strEnd, StringComparison.Ordinal);
+            
             if (j < 0)
             {
                 return string.Empty;

@@ -1,31 +1,29 @@
 using System;
+using System.ComponentModel.Design.Serialization;
+using System.Net.Mime;
 using Moq;
 using MTCG.Contracts.Requests;
-using MTCG.Controllers;
-using MTCG.Exceptions;
-using MTCG.Repositories;
-using MTCG.Resources;
+using MTCG.Contracts.Responses;
+using MTCG.Controller;
 using MTCG.Server;
-using Newtonsoft.Json;
+using MTCG.Server.TcpWrapper;
+using MTCG.Service;
 using NUnit.Framework;
+using NUnit.Framework.Constraints;
 
 namespace MTCG.Test
 {
     [TestFixture]
     public class UserControllerTest
     {
-        private Mock<IUserRepository> UserRepository { get; set; }
-        private Mock<ICardRepository> CardRepository { get; set; }
-        private Mock<IPackageRepository> PackageRepository { get; set; }
+        private Mock<IUserService> Service { get; set; }
         private UserController Controller { get; set; }
 
         [SetUp]
         public void CreateUserController()
         {
-            UserRepository = new Mock<IUserRepository>();
-            CardRepository = new Mock<ICardRepository>();
-            PackageRepository = new Mock<IPackageRepository>();
-            Controller = new UserController(UserRepository.Object, CardRepository.Object, PackageRepository.Object);
+            Service = new Mock<IUserService>();
+            Controller = new UserController(Service.Object);
         }
 
         [Test]
@@ -40,10 +38,14 @@ namespace MTCG.Test
                 Username = "kienboec",
                 Password = "daniel"
             };
-            var user = new User(registrationRequest.Username, registrationRequest.Password) {Token = Guid.NewGuid()};
+            var registrationResponse = new RegistrationResponse
+            {
+                Success = true, 
+                Token = Guid.NewGuid().ToString()
+            };
 
-            UserRepository.Setup(x => x.CreateUser(It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(user);
+            Service.Setup(service => service.Register(It.IsAny<RegistrationRequest>()))
+                .Returns(registrationResponse);
             
             // act
             var response = Controller.Register(registrationRequest);

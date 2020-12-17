@@ -1,6 +1,6 @@
 using System;
 using Moq;
-using MTCG.Exceptions;
+using MTCG.Exception;
 using MTCG.Server;
 using MTCG.Server.TcpWrapper;
 using NUnit.Framework;
@@ -10,12 +10,14 @@ namespace MTCG.Test
     [TestFixture]
     public class WebServerTest
     {
+        private Mock<ITcpListener> _tcpListener;
         private Mock<ITcpClient> _client;
         private WebServer _server;
 
         [SetUp]
         public void CreateMocksAndServer()
         {
+            _tcpListener = new Mock<ITcpListener>();
             _client = new Mock<ITcpClient>();
             _server = new WebServer();
         }
@@ -25,12 +27,35 @@ namespace MTCG.Test
         {
             _client.Setup(client => client.GetRequest())
                 .Returns(() => new RequestContext());
-            
-            _client.Setup(client => client.Close()).Callback(() => {});
+
+            _client.Setup(client => client.SendResponse(It.IsAny<ResponseContext>()))
+                .Callback(() => {});
+
+            _client.Setup(client => client.Close())
+                .Callback(() => {});
+
+            _tcpListener.Setup(tcpListener => tcpListener.Start())
+                .Callback(() => {});
+
+            _tcpListener.Setup(tcpListener => tcpListener.AcceptTcpClient())
+                .Returns(() => _client.Object);
         }
 
         [Test]
-        public void Test_ServeClient_ParameterlessRouteInvoked()
+        public void Test_Listen_TcpListener_StartsAndCallsAcceptClient()
+        {
+            // arrange
+
+            // act
+            _server.Listen(_tcpListener.Object);
+            
+            // assert
+            _tcpListener.Verify(x => x.Start(), Times.Once);
+            _tcpListener.Verify(x => x.AcceptTcpClient(), Times.Once);
+        }
+        
+        [Test]
+        public void Test_Listen_ParameterlessRouteInvoked()
         {
             // arrange
             var request = new RequestContext
@@ -48,14 +73,15 @@ namespace MTCG.Test
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
             _server.RegisterRoute("GET", "/resource", _ => response);
-            _server.ServeClient(_client.Object);
-
+            _server.Listen(_tcpListener.Object);
+            
             // assert
+            _client.Verify(client => client.GetRequest(), Times.Once);
             _client.Verify(client => client.SendResponse(response), Times.Once);
         }
         
         [Test]
-        public void Test_ServeClient_ParameterRouteInvoked()
+        public void Test_Listen_ParameterRouteInvoked()
         {
             // arrange
             const string resourceId = "111";
@@ -75,7 +101,7 @@ namespace MTCG.Test
             });
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -84,7 +110,7 @@ namespace MTCG.Test
         }
         
         [Test]
-        public void Test_ServeClient_MultiParameterRouteInvoked()
+        public void Test_Listen_MultiParameterRouteInvoked()
         {
             // arrange
             const string resourceId = "111";
@@ -107,7 +133,7 @@ namespace MTCG.Test
             });
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);    
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -116,7 +142,7 @@ namespace MTCG.Test
         }
         
         [Test]
-        public void Test_ServeClient_EndpointNotFound()
+        public void Test_Listen_EndpointNotFound()
         {
             // arrange
             const HttpStatus status = HttpStatus.NotFound;
@@ -129,19 +155,19 @@ namespace MTCG.Test
             // act
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
             _client.Verify(client => client.SendResponse(
                 It.Is<ResponseContext>(response => response.Status.Equals(status))));
         }
-
+        
         [Test]
-        public void Test_ServeClient_HttpVerbNotSupportedForRoute()
+        public void Test_Listen_HttpVerbNotSupportedForRoute()
         {
             // arrange
-            const HttpStatus status = HttpStatus.MethodNotAllowed;
+            const HttpStatus status = HttpStatus.NotImplemented;
             var request = new RequestContext
             {
                 Method = "TRACE",
@@ -152,7 +178,7 @@ namespace MTCG.Test
             _server.RegisterRoute("GET", "/resource", _ => null);
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -161,7 +187,7 @@ namespace MTCG.Test
         }
         
         [Test]
-        public void Test_ServeClient_ResourceNotFound()
+        public void Test_Listen_ResourceNotFound()
         {
             // arrange
             const HttpStatus status = HttpStatus.NotFound;
@@ -175,7 +201,7 @@ namespace MTCG.Test
             _server.RegisterRoute("GET", "/resource", _ => throw new NotFoundException());
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -184,7 +210,7 @@ namespace MTCG.Test
         }
         
         [Test]
-        public void Test_ServeClient_BadFormatException()
+        public void Test_Listen_BadFormatException()
         {
             // arrange
             const HttpStatus status = HttpStatus.BadRequest;
@@ -198,7 +224,7 @@ namespace MTCG.Test
             _server.RegisterRoute("GET", "/resource", _ => throw new BadRequestException());
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -207,7 +233,7 @@ namespace MTCG.Test
         }
         
         [Test]
-        public void Test_ServeClient_InternalServerErrorException()
+        public void Test_Listen_InternalServerErrorException()
         {
             // arrange
             const HttpStatus status = HttpStatus.InternalServerError;
@@ -221,7 +247,7 @@ namespace MTCG.Test
             _server.RegisterRoute("GET", "/resource", _ => throw new Exception());
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -230,7 +256,7 @@ namespace MTCG.Test
         }
         
         [Test]
-        public void Test_ServeClient_MultipleMethodsOnSameEndpoint()
+        public void Test_Listen_MultipleMethodsOnSameEndpoint()
         {
             // arrange
             var response = new ResponseContext { Status = HttpStatus.Ok};
@@ -243,12 +269,12 @@ namespace MTCG.Test
             request.Method = "GET";
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
 
             request.Method = "POST";
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.ServeClient(_client.Object);
+            _server.Listen(_tcpListener.Object);
 
             // assert
             _client.Verify(client => client.GetRequest(), Times.Exactly(2));
