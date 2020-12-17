@@ -39,8 +39,9 @@ namespace MTCG.Controller
                 return Conflict("Username is taken.");
             }
 
-            var user = _userRepository.CreateUser(request.Username, request.Password);
-            return Created(user.Token.ToString());
+            var user = new User(request.Username, request.Password);
+            var createdUser = _userRepository.CreateUser(user);
+            return Created(createdUser.Token);
         }
 
         public ResponseContext Get(string username)
@@ -81,7 +82,7 @@ namespace MTCG.Controller
             foreach (var package in packages)
             {
                 var cardIds = package.Cards;
-                cardIds.ForEach(id => resultSet.Add(_cardRepository.GetCard(id)));
+                cardIds.ForEach(card => resultSet.Add(_cardRepository.GetCard(card.Id)));
             }
 
             return Ok(resultSet);
@@ -112,7 +113,7 @@ namespace MTCG.Controller
             
             if (purchase)
             {
-                _userRepository.AddCoins(user.Username, unownedPackage.Size * -1);
+                _userRepository.AddCoins(user.Username, unownedPackage.Cards.Count * -1);
             }
 
             return Ok(unownedPackage.Id.ToString());

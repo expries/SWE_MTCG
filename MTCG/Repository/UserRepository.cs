@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MTCG.Resource;
+using MTCG.Resource.Cards;
 
 namespace MTCG.Repository
 {
@@ -69,6 +70,31 @@ namespace MTCG.Repository
         {
             var user = GetUser(username);
             user?.AddCoins(coins);
+        }
+
+        public void EmptyDeck(string username)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool SetDeck(string username, List<Guid> cardIds)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void AddPackageToUser(string username, Package packageToAcquire)
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<Card> GetDeck(string username)
+        {
+            throw new NotImplementedException();
+        }
+
+        public User CreateUser(User user)
+        {
+            throw new NotImplementedException();
         }
     }
 }

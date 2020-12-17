@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using MTCG.Controller;
+using MTCG.Mapper;
 using MTCG.Repository;
 using MTCG.Request;
 using MTCG.Server;
@@ -31,7 +32,7 @@ namespace MTCG
             
             server.RegisterRoute("POST", "/users", context =>
             {
-                return userController.Register(MapJsonTo<RegistrationRequest>(context.Content));
+                return userController.Register(WebMapper.MapJsonTo<RegistrationRequest>(context.Content));
             });
             
             server.RegisterRoute("GET", "/users/{username}", context =>
@@ -42,7 +43,7 @@ namespace MTCG
             // SESSIONS
             server.RegisterRoute("POST", "/sessions", context =>
             {
-                return userController.Login(MapJsonTo<LoginRequest>(context.Content));
+                return userController.Login(WebMapper.MapJsonTo<LoginRequest>(context.Content));
             });
             
             // CARDS
@@ -59,13 +60,13 @@ namespace MTCG
             server.RegisterRoute("GET", "/cardsAll/{cardId}", context =>
             {
                 string cardId = context.PathParam["cardId"];
-                return cardController.Get(MapToGuid(cardId));
+                return cardController.Get(WebMapper.MapToGuid(cardId));
             });
             
             // PACKAGES
             server.RegisterRoute("POST", "/packages", context =>
             {
-                var cardRequests = MapJsonTo<List<CardCreationRequest>>(context.Content);
+                var cardRequests = WebMapper.MapJsonTo<List<CardCreationRequest>>(context.Content);
                 return packageController.Create(cardRequests);
             });
             
@@ -77,7 +78,7 @@ namespace MTCG
             server.RegisterRoute("GET", "/packages/{packageId}", context =>
             {
                 string packageId = context.PathParam["packageId"];
-                return packageController.Get(MapToGuid(packageId));
+                return packageController.Get(WebMapper.MapToGuid(packageId));
             });
             
             // TRANSACTIONS
