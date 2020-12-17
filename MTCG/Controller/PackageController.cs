@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MTCG.Repository;
 using MTCG.Request;
+using MTCG.Resource;
 using MTCG.Resource.Cards;
 using MTCG.Resource.Cards.MonsterCards;
 using MTCG.Server;
@@ -50,9 +51,10 @@ namespace MTCG.Controller
             
             cards.ForEach(card => _cardRepository.CreateCard(card));
             var cardIds = cards.Select(card => card.Id).ToList();
-            var package = _packageRepository.CreatePackage(cardIds);
+            var package = new Package();
+            var packageCreated = _packageRepository.CreatePackage(package);
 
-            return Created(package.Id.ToString());
+            return Created(packageCreated.Id.ToString());
         }
 
         public ResponseContext Get(Guid id)

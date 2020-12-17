@@ -12,10 +12,10 @@ namespace MTCG.Repository
 
         public Package GetRandomPackage();
 
-        public Package CreatePackage(List<Guid> cardIds);
+        public Package CreatePackage(Package package);
 
         public bool DeletePackage(Guid id);
         
-        public bool UpdatePackage(Guid id, List<Guid> cardIds);
+        public bool UpdatePackage(Package package);
     }
 }

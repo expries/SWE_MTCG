@@ -14,10 +14,8 @@ namespace MTCG.Repository
             _packages = new Dictionary<Guid, Package>();
         }
 
-        public Package CreatePackage(List<Guid> cardIds)
+        public Package CreatePackage(Package package)
         {
-            var package = new Package(Guid.NewGuid());
-            package.SetCards(cardIds);
             _packages.Add(package.Id, package);
             return package;
         }
@@ -38,14 +36,14 @@ namespace MTCG.Repository
             return true;
         }
 
-        public bool UpdatePackage(Guid id, List<Guid> cardIds)
+        public bool UpdatePackage(Package package)
         {
-            if (!_packages.ContainsKey(id))
+            if (!_packages.ContainsKey(package.Id))
             {
                 return false;
             }
 
-            _packages[id].SetCards(cardIds);
+            _packages[package.Id] = package;
             return true;
         }
 
