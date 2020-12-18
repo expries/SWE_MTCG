@@ -5,26 +5,26 @@ namespace MTCG.ActionResult
 {
     public class ActionError
     {
-        [JsonIgnore]
-        public ServiceError Error;
+        [JsonIgnore] 
+        private readonly ServiceError _error;
         
         [JsonProperty("Error")]
         public string Message { get; }
 
         public ActionError(ServiceError error, string message) : this(message)
         {
-            Error = error;
+            _error = error;
         }
 
         public ActionError(string message)
         {
-            Error = default;
+            _error = default;
             Message = message;
         }
 
         public bool Equals(ServiceError error)
         {
-            return Error.Equals(error);
+            return _error.Equals(error);
         }
 
         public bool IsOneOf(params ServiceError[] errors)
