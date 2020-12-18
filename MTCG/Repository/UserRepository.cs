@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MTCG.Database;
+using MTCG.Database.Entity;
+using MTCG.Mapper;
 using MTCG.Resource;
 using MTCG.Resource.Cards;
 
@@ -8,93 +11,123 @@ namespace MTCG.Repository
 {
     public class UserRepository : IUserRepository
     {
-        private readonly Dictionary<string, User> _users;
-        private readonly Dictionary<string, List<Guid>> _packages;
+        private readonly DatabaseManager _db;
 
-        public UserRepository()
+        public UserRepository(DatabaseManager db)
         {
-            _users = new Dictionary<string, User>();
-            _packages = new Dictionary<string, List<Guid>>();
-        }
-
-        public User CreateUser(string username, string password)
-        {
-            var user = new User(username, password, Guid.NewGuid());
-            user.AddCoins(5);
-            _users.Add(user.Username, user);
-            _packages.Add(user.Username, new List<Guid>());
-            return user;
-        }
-
-        public bool CheckCredentials(string username, string password)
-        {
-            if (!_users.ContainsKey(username))
-            {
-                return false;
-            }
-            return _users[username].Password == password;
+            _db = db;
         }
 
         public User GetUser(string username)
         {
-            return _users.ContainsKey(username) ? _users[username] : null;
+            const string sql = "SELECT userID, username, password FROM \"user\" " +
+                               "WHERE username = @username";
+
+            var entity = _db.FetchFromQuery<UserEntity>(sql, new {Username = username}).FirstOrDefault();
+
+            if (entity is null)
+            {
+                return null;
+            }
+            
+            var userMapper = new UserEntityMapper();
+            var user = userMapper.Map(entity);
+            var stack = GetStack(username);
+            stack.ForEach(card => user.AddCard(card));
+            
+            return user;
         }
 
         public List<User> GetAllUsers()
         {
-            return _users.Values.ToList();
-        }
+            const string sql = "SELECT userID, username, password FROM \"user\"";
+            var records = _db.FetchFromQuery<UserEntity>(sql);
+            var userMapper = new UserEntityMapper();
+            var userList = userMapper.Map(records).ToList();
 
-        public bool AcquirePackage(string username, Guid packageId)
-        {
-            if (!_packages.ContainsKey(username))
+            foreach (var user in userList)
             {
-                return false;
+                var stack = GetStack(user.Username);
+                stack.ForEach(card => user.AddCard(card));
             }
-
-            if (_packages[username].Contains(packageId))
-            {
-                return false;
-            }
-
-            _packages[username].Add(packageId);
-            return true;
-        }
-
-        public List<Guid> GetPackageIds(string username)
-        {
-            return _packages.ContainsKey(username) ? _packages[username] : null;
+            
+            return userList;
         }
 
         public void AddCoins(string username, int coins)
         {
-            var user = GetUser(username);
-            user?.AddCoins(coins);
+            const string sql = "UPDATE \"user\" SET coins = coins + @coins " +
+                               "WHERE username = @username";
+            
+            _db.ExecuteQuery(sql, new {Username = username, Coins = coins});
         }
 
         public void EmptyDeck(string username)
         {
-            throw new NotImplementedException();
+            const string sql = "DELETE FROM deck WHERE fk_userID = @userID";
+            var user = GetUser(username);
+            _db.ExecuteNonQuery(sql, new {userID = user.Id});
         }
 
         public bool SetDeck(string username, List<Guid> cardIds)
         {
-            throw new NotImplementedException();
+            const string sql = "INSERT INTO deck (fk_userID, fk_cardID) " +
+                               "VALUES (@userID, @cardID)";
+
+            int affectedRows = 0;
+            var user = GetUser(username);
+            
+            foreach (var id in cardIds)
+            {
+                affectedRows += _db.ExecuteNonQuery(sql, new {userID = user.Id, cardID = id});
+            }
+
+            return affectedRows == cardIds.Count;
         }
 
-        public void AddPackageToUser(string username, Package packageToAcquire)
+        public void AddPackageToUser(string username, Package package)
         {
-            throw new NotImplementedException();
+            const string sql = "INSERT INTO collection (fk_userID, fk_packageID) " +
+                               "VALUES (@userID, @packageID)";
+
+            var user = GetUser(username);
+            _db.ExecuteNonQuery(sql, new {userID = user.Id, package.Id});
         }
 
         public List<Card> GetDeck(string username)
         {
-            throw new NotImplementedException();
+            const string sql = "SELECT username, cardid, name, type, element, damage, fk_packageid, monstertype " +
+                               "FROM user_deck " +
+                               "WHERE username = @username";
+
+            var entities = _db.FetchFromQuery<CardEntity>(sql, new {Username = username});
+            var cardMapper = new CardEntityMapper();
+            var cards = cardMapper.Map(entities);
+            return cards.ToList();
+        }
+
+        public List<Card> GetStack(string username)
+        {
+            const string sql = "SELECT username, cardid, name, type, element, damage, fk_packageid, monstertype " +
+                               "FROM card_collection " +
+                               "WHERE username = @username";
+            
+            var entities = _db.FetchFromQuery<CardEntity>(sql, new {Username = username});
+            var cardMapper = new CardEntityMapper();
+            var cards = cardMapper.Map(entities);
+            return cards.ToList();
         }
 
         public User CreateUser(User user)
         {
-            throw new NotImplementedException();
+            const string sql = "INSERT INTO \"user\" (userID, username, password, coins) " +
+                               "VALUES (@userID, @username, @password, @coins)";
+
+            var userData = new
+                {userID = user.Id, username = user.Username, password = user.Password, coins = user.Coins};
+            _db.ExecuteNonQuery(sql, userData);
+
+            return GetUser(user.Username);
         }
     }
 }

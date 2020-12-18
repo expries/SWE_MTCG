@@ -7,26 +7,22 @@ namespace MTCG.Repository
 {
     public interface IUserRepository
     {
-        public List<User> GetAllUsers();
-
         public User GetUser(string username);
 
-        public bool CheckCredentials(string username, string password);
-
-        public List<Guid> GetPackageIds(string username);
-
-        public bool AcquirePackage(string username, Guid packageId);
+        public List<User> GetAllUsers();
 
         public void AddCoins(string username, int coins);
 
         public void EmptyDeck(string username);
-        
+
         public bool SetDeck(string username, List<Guid> cardIds);
+
+        public void AddPackageToUser(string username, Package package);
         
-        void AddPackageToUser(string username, Package packageToAcquire);
-        
-        List<Card> GetDeck(string username);
-        
-        User CreateUser(User user);
+        public List<Card> GetDeck(string username);
+
+        public List<Card> GetStack(string username);
+
+        public User CreateUser(User user);
     }
 }

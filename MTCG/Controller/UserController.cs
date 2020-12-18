@@ -1,165 +1,70 @@
 using System.Collections.Generic;
-using System.Linq;
 using MTCG.Exception;
-using MTCG.Repository;
 using MTCG.Request;
 using MTCG.Resource;
 using MTCG.Resource.Cards;
 using MTCG.Server;
-using Newtonsoft.Json;
+using MTCG.Service;
 
 namespace MTCG.Controller
 {
     public class UserController : ApiController
     {
-        private readonly IUserRepository _userRepository;
-        private readonly ICardRepository _cardRepository;
-        private readonly IPackageRepository _packageRepository;
+        private readonly IUserService _userService;
 
-        public UserController()
+        public UserController(IUserService userService)
         {
-            _userRepository = new UserRepository();
-            _cardRepository = new CardRepository();
-            _packageRepository = new PackageRepository();
-        }
-
-        public UserController(IUserRepository userRepository, 
-                              ICardRepository cardRepository, 
-                              IPackageRepository packageRepository)
-        {
-            _userRepository = userRepository;
-            _cardRepository = cardRepository;
-            _packageRepository = packageRepository;
+            _userService = userService;
         }
 
         public ResponseContext Register(RegistrationRequest request)
         {
-            if (_userRepository.GetUser(request.Username) != null)
+            var action = _userService.CreateUser(request.Username, request.Password);
+
+            if (!action.Success)
             {
-                return Conflict("Username is taken.");
+                return BadRequest(action.Error.Message);
             }
 
-            var user = new User(request.Username, request.Password);
-            var createdUser = _userRepository.CreateUser(user);
-            return Created(createdUser.Token);
+            var user = action.Item;
+            return Created(user.Token);
         }
 
         public ResponseContext Get(string username)
         {
-            var user = _userRepository.GetUser(username);
-
-            return user == null 
-                ? NotFound("User not found.") 
-                : Ok(user);
+            var user = _userService.GetUser(username);
+            return user is null ? NotFound("User not found.") : Ok(user);
         }
 
         public ResponseContext GetAll()
         {
-            var users = _userRepository.GetAllUsers();
+            var users = _userService.GetAllUsers();
             return Ok(users);
         }
         
         public ResponseContext Login(LoginRequest request)
         {
-            return !_userRepository.CheckCredentials(request.Username, request.Password) 
-                ? BadRequest("No user with this username and password exists.") 
-                : Ok();
+            bool valid = _userService.VerifyLogin(request.Username, request.Password);
+            return valid ? Ok() : BadRequest("No user with this username and password exists.") ;
         }
 
-        public ResponseContext GetCards(string token)
+        public ResponseContext GetCards(string username)
         {
-            var user = GetUserByAuthToken(token);
-
-            if (user is null)
-            {
-                return NotFound("User not found.");
-            }
-            
-            var packageIds = _userRepository.GetPackageIds(user.Username);
-            var packages = packageIds.Select(id => _packageRepository.GetPackage(id));
-            var resultSet = new List<Card>();
-
-            foreach (var package in packages)
-            {
-                var cardIds = package.Cards;
-                cardIds.ForEach(card => resultSet.Add(_cardRepository.GetCard(card.Id)));
-            }
-
-            return Ok(resultSet);
+            var user = _userService.GetUser(username);
+            return user is null ? NotFound("User not found.") : Ok(user.Stack);
         }
 
-        public ResponseContext AcquirePackage(string token)
+        public ResponseContext AcquirePackage(string username)
         {
-            var user = GetUserByAuthToken(token);
-            
-            if (user is null)
+            var purchase = _userService.AcquirePackage(username);
+
+            if (!purchase.Success)
             {
-                return NotFound("User not found.");
+                return BadRequest(purchase.Error.Message);
             }
 
-            if (user.Coins == 0)
-            {
-                return Conflict("Not enough coins to purchase a package.");
-            }
-
-            var unownedPackage = GetUnownedPackageForUser(user.Username);
-
-            if (unownedPackage is null)
-            {
-                return Conflict("You already own all the packages.");
-            }
-
-            bool purchase = _userRepository.AcquirePackage(user.Username, unownedPackage.Id);
-            
-            if (purchase)
-            {
-                _userRepository.AddCoins(user.Username, unownedPackage.Cards.Count * -1);
-            }
-
-            return Ok(unownedPackage.Id.ToString());
-        }
-
-        private User GetUserByAuthToken(string token)
-        {
-            var s1 = token.Split(" ");
-            if (s1.Length != 2)
-            {
-                throw new BadRequestException();
-            }
-
-            var s2 = s1[1].Split("-");
-            if (s2.Length != 2)
-            {
-                throw new BadRequestException("Invalid auth header.");
-            }
-
-            string username = s2[0];
-            return _userRepository.GetUser(username);
-        }
-
-        private Package GetUnownedPackageForUser(string username)
-        {
-            var user = _userRepository.GetUser(username);
-
-            if (user is null)
-            {
-                throw new NotFoundException("User not found.");
-            }
-            
-            var ownedPackages = _userRepository.GetPackageIds(user.Username);
-            Package randomPackage; int i = 0;
-            
-            do
-            {
-                randomPackage = _packageRepository.GetRandomPackage();
-                if (randomPackage is null)
-                {
-                    return null;
-                }
-                i++;
-            } while (ownedPackages.Contains(randomPackage.Id) && i < 100);
-
-            return ownedPackages.Contains(randomPackage.Id) ? null : randomPackage;
+            var package = purchase.Item;
+            return Ok(package);
         }
     }
 }
