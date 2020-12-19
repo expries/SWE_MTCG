@@ -10,6 +10,6 @@ namespace MTCG.Repository
 
         public Card GetCard(Guid id);
         
-        public Card CreateCard(Card card);
+        public Card CreateCard(Card card, Guid packageId);
     }
 }
