@@ -1,74 +1,35 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using MTCG.Repository;
 using MTCG.Request;
-using MTCG.Resource;
-using MTCG.Resource.Cards;
-using MTCG.Resource.Cards.MonsterCards;
 using MTCG.Server;
-using Newtonsoft.Json;
+using MTCG.Service;
 
 namespace MTCG.Controller
 {
     public class PackageController : ApiController
     {
-        private readonly ICardRepository _cardRepository;
-        private readonly IPackageRepository _packageRepository;
-        
-        public PackageController()
-        {
-            _cardRepository = new CardRepository();
-            _packageRepository = new PackageRepository();
-        }
+        private readonly IPackageService _packageService;
 
-        public PackageController(ICardRepository cardRepository, IPackageRepository packageRepository)
+        public PackageController(IPackageService packageService)
         {
-            _cardRepository = cardRepository;
-            _packageRepository = packageRepository;
+            _packageService = packageService;
         }
 
         public ResponseContext Create(IEnumerable<CardCreationRequest> requests)
         {
-            var cards = new List<Card>();
-            requests = requests.ToList();
-            
-            if (!requests.Any())
-            {
-                return BadRequest("A package has to contain at least one card.");
-            }
-
-            foreach (var cardRequest in requests)
-            {
-                if (_cardRepository.GetCard(cardRequest.Id) != null)
-                {
-                    return Conflict("Card with id " + cardRequest.Id + " already exists.");
-                }
-                
-                var card = new Goblin(cardRequest.Name, cardRequest.Damage) { Id = cardRequest.Id };
-                cards.Add(card);
-            }
-            
-            cards.ForEach(card => _cardRepository.CreateCard(card));
-            var cardIds = cards.Select(card => card.Id).ToList();
-            var package = new Package();
-            var packageCreated = _packageRepository.CreatePackage(package);
-
-            return Created(packageCreated.Id.ToString());
+            var result = _packageService.CreatePackage(requests);
+            return result.Match(package => Ok(package.Id), Conflict, BadRequest);
         }
 
-        public ResponseContext Get(Guid id)
+        public ResponseContext Get(Guid packageId)
         {
-            var package = _packageRepository.GetPackage(id);
-
-            return package is null 
-                ? NotFound("No package with this id exists.") 
-                : Ok(package);
+            var package = _packageService.GetPackage(packageId);
+            return package.Match(Ok, NotFound);
         }
 
         public ResponseContext GetAll()
         {
-            var packages = _packageRepository.GetAllPackages();
+            var packages = _packageService.GetAllPackages();
             return Ok(packages);
         }
     }
