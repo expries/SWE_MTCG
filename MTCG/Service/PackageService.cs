@@ -44,6 +44,7 @@ namespace MTCG.Service
             {
                 var cardMapper = new CardCreationRequestMapper();
                 var cards = cardMapper.Map(cardRequests).ToList();
+                
                 var package = new Package(Guid.NewGuid());
                 cards.ForEach(card => package.AddCard(card));
                 return CreatePackage(package);
@@ -66,7 +67,6 @@ namespace MTCG.Service
                 return new DuplicateId("A package with this ID already exists.");
             }
             
-            var newPackage = _packageRepository.CreatePackage(package);
             var cardIds = package.Cards.Select(card => card.Id);
             var existentCards = _cardRepository.GetAllCards().Where(card => cardIds.Contains(card.Id)).ToList();
 
@@ -75,6 +75,8 @@ namespace MTCG.Service
                 return new DuplicateId(
                     "Cards with these ids already exist: " + string.Join(",", existentCards));
             }
+            
+            var newPackage = _packageRepository.CreatePackage(package);
 
             foreach (var card in package.Cards)
             {
@@ -83,7 +85,7 @@ namespace MTCG.Service
                     var newCard = _cardRepository.CreateCard(card, package.Id);
                     newPackage.AddCard(newCard);
                 }
-                catch (System.Exception error)
+                catch
                 {
                     _packageRepository.DeletePackage(newPackage.Id);
                     throw;  // rethrow after deleting package
