@@ -1,67 +1,76 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MTCG.Database;
+using MTCG.Database.Entity;
+using MTCG.Mapper;
 using MTCG.Resource;
+using MTCG.Resource.Cards;
 
 namespace MTCG.Repository
 {
     public class PackageRepository : IPackageRepository
     {
-        private readonly Dictionary<Guid, Package> _packages;
+        private readonly DatabaseManager _db;
 
-        public PackageRepository()
+        public PackageRepository(DatabaseManager db)
         {
-            _packages = new Dictionary<Guid, Package>();
+            _db = db;
         }
 
         public Package CreatePackage(Package package)
         {
-            _packages.Add(package.Id, package);
+            const string sql = "INSERT INTO package (packageid, price) " +
+                               "VALUES (@packageId, @price)";
+
+            _db.ExecuteNonQuery(sql, new {packageId = package.Id, price = package.Price});
+            return GetPackage(package.Id);
+        }
+
+        public Package GetPackage(Guid packageId)
+        {
+            const string sql = "SELECT packageid, price FROM package " +
+                               "WHERE packageid = @id";
+            
+            var entity = _db.FetchFirstFromQuery<PackageEntity>(sql, new {id = packageId});
+            var packageMapper = new PackageEntityMapper();
+            var package = packageMapper.Map(entity);
+            
+            if (package is null)
+            {
+                return null;
+            }
+            
+            var cards = GetCardsInPackage(package.Id);
+            cards.ForEach(card => package.AddCard(card));
             return package;
-        }
-
-        public Package GetPackage(Guid id)
-        {
-            return _packages.ContainsKey(id) ? _packages[id] : null;
-        }
-
-        public bool DeletePackage(Guid id)
-        {
-            if (_packages.ContainsKey(id))
-            {
-                return false;
-            }
-
-            _packages.Remove(id);
-            return true;
-        }
-
-        public bool UpdatePackage(Package package)
-        {
-            if (!_packages.ContainsKey(package.Id))
-            {
-                return false;
-            }
-
-            _packages[package.Id] = package;
-            return true;
         }
 
         public List<Package> GetAllPackages()
         {
-            return _packages.Values.ToList();
-        }
+            const string sql = "SELECT packageid, price FROM package";
+            var entities = _db.FetchFromQuery<PackageEntity>(sql);
+            var packageMapper = new PackageEntityMapper();
+            var packages = packageMapper.Map(entities).ToList();
 
-        public Package GetRandomPackage()
-        {
-            var packageList = _packages.Values.ToList();
-            if (!packageList.Any())
+            foreach (var package in packages)
             {
-                return null;
+                var cards = GetCardsInPackage(package.Id);
+                cards.ForEach(card => package.AddCard(card));
             }
-
-            int randomIndex = new Random().Next(packageList.Count);
-            return packageList[randomIndex];
+            
+            return packages;
+        }
+        
+        private List<Card> GetCardsInPackage(Guid packageId)
+        {
+            const string sql = "SELECT cardid, name, type, element, damage, fk_packageid, monstertype FROM card " +
+                               "WHERE fk_packageId = @id";
+            
+            var entities = _db.FetchFromQuery<CardEntity>(sql, new {id = packageId});
+            var cardMapper = new CardEntityMapper();
+            var cards = cardMapper.Map(entities).ToList();
+            return cards;
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using MTCG.Database.Entity;
 using Npgsql;
 using Npgsql.Schema;
 
@@ -40,6 +41,28 @@ namespace MTCG.Database
             return new DatabaseManager(Host, Username, Password, Database);
         }
         
+        public TEntity FetchFirstFromQuery<TEntity>(string query) 
+            where TEntity : class, new()
+        {
+            var cmd = new NpgsqlCommand(query);
+            ExecuteQuery(cmd);
+            return GetNextRecord<TEntity>();
+        }
+        
+        public TEntity FetchFirstFromQuery<TEntity>(string query, object dataObject) 
+            where TEntity : class, new()
+        {
+            ExecuteQuery(query, dataObject);
+            return GetNextRecord<TEntity>();
+        }
+        
+        public TEntity FetchFirstFromQuery<TEntity>(NpgsqlCommand cmd) 
+            where TEntity : class, new()
+        {
+            ExecuteQuery(cmd);
+            return GetRecord<TEntity>();
+        }
+        
         public List<TEntity> FetchFromQuery<TEntity>(string query, int limit = 100) 
             where TEntity : class, new()
         {
@@ -47,7 +70,7 @@ namespace MTCG.Database
             ExecuteQuery(cmd);
             return GetRecords<TEntity>(limit);
         }
-        
+
         public List<TEntity> FetchFromQuery<TEntity>(string query, object dataObject, int limit = 100) 
             where TEntity : class, new()
         {
