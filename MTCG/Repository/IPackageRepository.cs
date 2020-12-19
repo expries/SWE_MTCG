@@ -11,5 +11,7 @@ namespace MTCG.Repository
         public Package GetPackage(Guid packageId);
         
         public Package CreatePackage(Package package);
+
+        public void DeletePackage(Guid packageId);
     }
 }

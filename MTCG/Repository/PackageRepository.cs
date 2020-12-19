@@ -18,6 +18,12 @@ namespace MTCG.Repository
             _db = db;
         }
 
+        public void DeletePackage(Guid packageId)
+        {
+            const string sql = "DELETE FROM package WHERE packageid = @id";
+            _db.ExecuteNonQuery(sql, new {id = packageId});
+        }
+
         public Package CreatePackage(Package package)
         {
             const string sql = "INSERT INTO package (packageid, price) " +

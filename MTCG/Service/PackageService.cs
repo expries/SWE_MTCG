@@ -2,33 +2,35 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using MTCG.ActionResult;
+using MTCG.ActionResult.Errors;
 using MTCG.Mapper;
 using MTCG.Repository;
 using MTCG.Request;
 using MTCG.Resource;
-using MTCG.Resource.Cards;
 
 namespace MTCG.Service
 {
     public class PackageService : IPackageService
     {
-        private readonly PackageRepository _packageRepository;
-        private readonly CardService _cardService;
+        private readonly IPackageRepository _packageRepository;
+        private readonly ICardRepository _cardRepository;
         
-        public PackageService(PackageRepository packageRepository, CardService cardService)
+        public PackageService(IPackageRepository packageRepository, ICardRepository cardRepository)
         {
             _packageRepository = packageRepository;
-            _cardService = cardService;
+            _cardRepository = cardRepository;
         }
 
-        public bool DeletePackage(Guid packageId)
+        public OneOf<Package, NotFound> GetPackage(Guid packageId)
         {
-            return _packageRepository.DeletePackage(packageId);
-        }
+            var package = _packageRepository.GetPackage(packageId);
 
-        public Package GetPackage(Guid packageId)
-        {
-            return _packageRepository.GetPackage(packageId);
+            if (package is null)
+            {
+                return new NotFound("No package with id " + packageId + " exists.");
+            }
+
+            return package;
         }
 
         public List<Package> GetAllPackages()
@@ -36,7 +38,7 @@ namespace MTCG.Service
             return _packageRepository.GetAllPackages();
         }
 
-        public ActionResult<Package> CreatePackage(IEnumerable<CardCreationRequest> cardRequests)
+        public OneOf<Package, DuplicateId, Error> CreatePackage(IEnumerable<CardCreationRequest> cardRequests)
         {
             try
             {
@@ -48,53 +50,47 @@ namespace MTCG.Service
             }
             catch (ArgumentException error)
             {
-                return new ActionResult<Package>(ServiceError.BadFormat, error.Message);
+                return new BadFormat(error.Message);
             }
         }
 
-        public ActionResult<Package> CreatePackage(Package package)
+        public OneOf<Package, DuplicateId, Error> CreatePackage(Package package)
         {
             if (package.Cards.Count == 0)
             {
-                return new ActionResult<Package>(ServiceError.PackageIsEmpty, 
-                    "A package has to contain at least one card.");
+                return new PackageIsEmpty("The package may not be empty.");
             }
             
             if (GetPackage(package.Id) != null)
             {
-                return new ActionResult<Package>(ServiceError.DuplicateId, 
-                    "A package with this ID already exists.");
+                return new DuplicateId("A package with this ID already exists.");
             }
             
-            var createdPackage = _packageRepository.CreatePackage(package);
-            var cardCreation = new ActionResult<Card>();
-            
-            // create cards
-            foreach (var card in createdPackage.Cards)
-            {
-                cardCreation = _cardService.CreateCard(card, package.Id);
+            var newPackage = _packageRepository.CreatePackage(package);
+            var cardIds = package.Cards.Select(card => card.Id);
+            var existentCards = _cardRepository.GetAllCards().Where(card => cardIds.Contains(card.Id)).ToList();
 
-                if (!cardCreation.Success)
+            if (existentCards.Any())
+            {
+                return new DuplicateId(
+                    "Cards with these ids already exist: " + string.Join(",", existentCards));
+            }
+
+            foreach (var card in package.Cards)
+            {
+                try
                 {
-                    break;
+                    var newCard = _cardRepository.CreateCard(card, package.Id);
+                    newPackage.AddCard(newCard);
                 }
-                
-                createdPackage.AddCard(cardCreation.Item);
+                catch (System.Exception error)
+                {
+                    _packageRepository.DeletePackage(newPackage.Id);
+                    throw;  // rethrow after deleting package
+                }
             }
 
-            if (cardCreation.Success)
-            {
-                return new ActionResult<Package>(createdPackage);
-            }
-            
-            // if not successful, delete created cards
-            foreach (var card in createdPackage.Cards)
-            {
-                _cardService.DeleteCard(card.Id);
-            }
-
-            _packageRepository.DeletePackage(createdPackage.Id);
-            return new ActionResult<Package>(ServiceError.BadFormat, cardCreation.Error.Message);
+            return newPackage;
         }
     }
 }
