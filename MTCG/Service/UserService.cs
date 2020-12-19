@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using MTCG.ActionResult;
+using MTCG.ActionResult.Errors;
 using MTCG.Repository;
 using MTCG.Resource;
 using MTCG.Resource.Cards;
@@ -23,9 +24,16 @@ namespace MTCG.Service
             _cardService = cardService;
         }
 
-        public User GetUser(string username)
+        public OneOf<User,NotFound> GetUser(string username)
         {
-            return _userRepository.GetUser(username);
+            var user =  _userRepository.GetUser(username);
+            
+            if (user is null)
+            {
+                return new NotFound("User not found.");
+            }
+
+            return user;
         }
 
         public List<User> GetAllUsers()
@@ -33,60 +41,58 @@ namespace MTCG.Service
             return _userRepository.GetAllUsers();
         }
 
-        public bool VerifyLogin(string username, string password)
+        public bool CheckCredentials(string username, string password)
         {
-            var user = _userRepository.GetUser(username);
-
-            if (user is null)
-            {
-                return false;
-            }
-
-            return CalculateSha256Hash(password) == user.Password;
+            var userResult = GetUser(username);
+            
+            return userResult.Match(
+                user => CalculateSha256Hash(password) == user.Password,
+                notFound => false);
         }
         
         public bool VerifyUser(string username)
         {
-            return GetUser(username) != null;
+            var userResult = GetUser(username);
+            return userResult.Match(user => true, notFound => false);
         }
 
-        public ActionResult<Package> AcquirePackage(string username)
+        public OneOf<Package, NotFound, Error> AcquirePackage(string username)
         {
-            var user = GetUser(username);
+            var userResult = GetUser(username);
 
-            if (user is null)
+            if (userResult.IsT2())
             {
-                return new ActionResult<Package>(ServiceError.UserNotFound, 
-                    "No user with this username exists.");
+                return new NotFound();
             }
 
-            var packageToAcquire = GetUnownedPackage(user);
+            var user = userResult.GetT1(); 
+            var package = GetUnownedPackage(user);
 
-            if (packageToAcquire is null)
+            if (package is null)
             {
-                return new ActionResult<Package>(ServiceError.AllPackagesAcquired, 
-                    "The user already owns all the packages.");
+                return new AllPackagesAcquired();
             }
             
-            if (user.Coins < packageToAcquire.Price)
+            if (user.Coins < package.Price)
             {
-                return new ActionResult<Package>(ServiceError.NotEnoughCoins, 
-                    "The user doesn't have enough coins to buy this package.");
+                return new NotEnoughCoins();
             }
 
-            _userRepository.AddPackageToUser(username, packageToAcquire);
-            _userRepository.AddCoins(username, (-1) * packageToAcquire.Price);
-            return new ActionResult<Package>(packageToAcquire);
+            _userRepository.AddPackageToUser(username, package);
+            _userRepository.AddCoins(username, (-1) * package.Price);
+            return package;
         }
 
-        public ActionResult<User> CreateUser(string username, string password)
+        public OneOf<User, UsernameIsTaken, Error> CreateUser(string username, string password)
         {
-            var user = GetUser(username);
+            var userResult = GetUser(username);
 
-            if (user != null)
+            if (userResult.IsT1())
             {
-                return new ActionResult<User>(ServiceError.UsernameIsTaken, "The username is taken.");
+                return new UsernameIsTaken();
             }
+
+            var user = userResult.GetT1();
 
             try
             {
@@ -96,27 +102,23 @@ namespace MTCG.Service
             }
             catch (ArgumentException error)
             {
-                return new ActionResult<User>(ServiceError.BadFormat, error.Message);
+                return new BadFormat(error.Message);
             }
 
             var createdUser = _userRepository.CreateUser(user);
-            return new ActionResult<User>(createdUser);
+            return createdUser;
         }
 
-        public List<Card> GetDeck(string username)
+        public OneOf<List<Card>, NotFound, CardNotOwned, Error> SetDeck(string username, List<Guid> cardIds)
         {
-            return GetUser(username) is null ? null : _userRepository.GetDeck(username);
-        }
-
-        public ActionResult<List<Card>> SetDeck(string username, List<Guid> cardIds)
-        {
-            var user = GetUser(username);
+            var userResult = GetUser(username);
             
-            if (user is null)
+            if (userResult.IsT2())
             {
-                return new ActionResult<List<Card>>(ServiceError.UserNotFound, 
-                    "No user with this username exists.");
+                return new NotFound();
             }
+
+            var user = userResult.GetT1();
 
             var nonExistentCards = cardIds
                 .Where(cardId => _cardService.GetCard(cardId) is null)
@@ -124,8 +126,8 @@ namespace MTCG.Service
 
             if (nonExistentCards.Any())
             {
-                return new ActionResult<List<Card>>(ServiceError.CardNotFound, 
-                    "These cards don't exist: " + string.Join(", ", nonExistentCards));
+                string message = "These cards don't exist: " + string.Join(", ", nonExistentCards);
+                return new NotFound(message);
             }
 
             var userCards = user.Stack.Select(card => card.Id);
@@ -133,20 +135,15 @@ namespace MTCG.Service
 
             if (unownedCards.Any())
             {
-                return new ActionResult<List<Card>>(ServiceError.CardNotOwned, 
-                    "You do not own these cards: " + string.Join(", ", unownedCards) + ".");
+                string message = "You do not own these cards: " + string.Join(", ", unownedCards) + ".";
+                return new CardNotOwned(message);
             }
 
             _userRepository.EmptyDeck(username);
-            bool success = _userRepository.SetDeck(username, cardIds);
-            
-            if (!success)
-            {
-                return new ActionResult<List<Card>>(ServiceError.DeckNotSet, "Deck could not be set.");
-            }
-            
-            var deck = GetDeck(username);
-            return new ActionResult<List<Card>>(deck);
+            _userRepository.SetDeck(username, cardIds);
+
+            var deck = GetUser(username).GetT1().Deck;  // user exists if arrived here
+            return deck;
         }
 
         private Package GetUnownedPackage(User user)
