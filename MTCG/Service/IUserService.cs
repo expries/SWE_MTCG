@@ -13,7 +13,7 @@ namespace MTCG.Service
 
         public List<User> GetAllUsers();
 
-        public bool VerifyLogin(string username, string password);
+        public bool CheckCredentials(string username, string password);
         
         public bool VerifyUser(string username);
 

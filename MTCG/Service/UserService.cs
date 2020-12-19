@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Security;
 using System.Security.Cryptography;
 using System.Text;
 using MTCG.ActionResult;
@@ -42,7 +41,7 @@ namespace MTCG.Service
             return _userRepository.GetAllUsers();
         }
 
-        public bool VerifyLogin(string username, string password)
+        public bool CheckCredentials(string username, string password)
         {
             var userResult = GetUser(username);
             
@@ -67,21 +66,21 @@ namespace MTCG.Service
             }
 
             var user = userResult.GetT1(); 
-            var packageToAcquire = GetUnownedPackage(user);
+            var package = GetUnownedPackage(user);
 
-            if (packageToAcquire is null)
+            if (package is null)
             {
                 return new AllPackagesAcquired();
             }
             
-            if (user.Coins < packageToAcquire.Price)
+            if (user.Coins < package.Price)
             {
                 return new NotEnoughCoins();
             }
 
-            _userRepository.AddPackageToUser(username, packageToAcquire);
-            _userRepository.AddCoins(username, (-1) * packageToAcquire.Price);
-            return packageToAcquire;
+            _userRepository.AddPackageToUser(username, package);
+            _userRepository.AddCoins(username, (-1) * package.Price);
+            return package;
         }
 
         public OneOf<User, UsernameIsTaken, Error> CreateUser(string username, string password)
@@ -127,7 +126,8 @@ namespace MTCG.Service
 
             if (nonExistentCards.Any())
             {
-                return new NotFound("These cards don't exist: " + string.Join(", ", nonExistentCards));
+                string message = "These cards don't exist: " + string.Join(", ", nonExistentCards);
+                return new NotFound(message);
             }
 
             var userCards = user.Stack.Select(card => card.Id);
@@ -135,13 +135,14 @@ namespace MTCG.Service
 
             if (unownedCards.Any())
             {
-                return new CardNotOwned("You do not own these cards: " + string.Join(", ", unownedCards) + ".");
+                string message = "You do not own these cards: " + string.Join(", ", unownedCards) + ".";
+                return new CardNotOwned(message);
             }
 
             _userRepository.EmptyDeck(username);
             _userRepository.SetDeck(username, cardIds);
 
-            var deck = GetUser(username).GetT1().Deck;
+            var deck = GetUser(username).GetT1().Deck;  // user exists if arrived here
             return deck;
         }
 
