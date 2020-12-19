@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using MTCG.ActionResult;
+using MTCG.ActionResult.Errors;
 using MTCG.Resource;
 using MTCG.Resource.Cards;
 
@@ -18,10 +20,6 @@ namespace MTCG.Repository
         public bool SetDeck(string username, List<Guid> cardIds);
 
         public void AddPackageToUser(string username, Package package);
-        
-        public List<Card> GetDeck(string username);
-
-        public List<Card> GetStack(string username);
 
         public User CreateUser(User user);
     }

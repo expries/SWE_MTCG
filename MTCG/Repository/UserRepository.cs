@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MTCG.ActionResult;
+using MTCG.ActionResult.Errors;
 using MTCG.Database;
 using MTCG.Database.Entity;
 using MTCG.Mapper;
@@ -32,8 +34,11 @@ namespace MTCG.Repository
             
             var userMapper = new UserEntityMapper();
             var user = userMapper.Map(entity);
+            
             var stack = GetStack(username);
+            var deck = GetDeck(username);
             stack.ForEach(card => user.AddCard(card));
+            deck.ForEach(card => user.AddCardToDeck(card.Id));
             
             return user;
         }
@@ -48,7 +53,9 @@ namespace MTCG.Repository
             foreach (var user in userList)
             {
                 var stack = GetStack(user.Username);
+                var deck = GetDeck(user.Username);
                 stack.ForEach(card => user.AddCard(card));
+                deck.ForEach(card => user.AddCardToDeck(card.Id));
             }
             
             return userList;
@@ -94,7 +101,19 @@ namespace MTCG.Repository
             _db.ExecuteNonQuery(sql, new {userID = user.Id, package.Id});
         }
 
-        public List<Card> GetDeck(string username)
+        public User CreateUser(User user)
+        {
+            const string sql = "INSERT INTO \"user\" (userID, username, password, coins) " +
+                               "VALUES (@userID, @username, @password, @coins)";
+
+            var userData = new
+                {userID = user.Id, username = user.Username, password = user.Password, coins = user.Coins};
+            _db.ExecuteNonQuery(sql, userData);
+
+            return GetUser(user.Username);
+        }
+        
+        private List<Card> GetDeck(string username)
         {
             const string sql = "SELECT username, cardid, name, type, element, damage, fk_packageid, monstertype " +
                                "FROM user_deck " +
@@ -106,7 +125,7 @@ namespace MTCG.Repository
             return cards.ToList();
         }
 
-        public List<Card> GetStack(string username)
+        private List<Card> GetStack(string username)
         {
             const string sql = "SELECT username, cardid, name, type, element, damage, fk_packageid, monstertype " +
                                "FROM card_collection " +
@@ -116,18 +135,6 @@ namespace MTCG.Repository
             var cardMapper = new CardEntityMapper();
             var cards = cardMapper.Map(entities);
             return cards.ToList();
-        }
-
-        public User CreateUser(User user)
-        {
-            const string sql = "INSERT INTO \"user\" (userID, username, password, coins) " +
-                               "VALUES (@userID, @username, @password, @coins)";
-
-            var userData = new
-                {userID = user.Id, username = user.Username, password = user.Password, coins = user.Coins};
-            _db.ExecuteNonQuery(sql, userData);
-
-            return GetUser(user.Username);
         }
     }
 }

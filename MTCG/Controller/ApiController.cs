@@ -5,27 +5,6 @@ namespace MTCG.Controller
 {
     public class ApiController
     {
-        private static ResponseContext Response(HttpStatus status, string content, string contentType)
-        {
-            return new ResponseContext
-            {
-                Status = status,
-                Content = content,
-                ContentType = contentType
-            };
-        }
-
-        private static ResponseContext Response(HttpStatus status)
-        {
-            return new ResponseContext {Status = status};
-        }
-
-        private static ResponseContext Response(HttpStatus status, object obj)
-        {
-            string json = JsonConvert.SerializeObject(obj);
-            return Response(status, json, MediaType.Json);
-        }
-        
         protected static ResponseContext Ok()
         {
             return Response(HttpStatus.Ok);
@@ -94,6 +73,27 @@ namespace MTCG.Controller
         protected static ResponseContext NoContent(object obj)
         {
             return Response(HttpStatus.NoContent, obj);
+        }
+
+        protected static ResponseContext Response(HttpStatus status)
+        {
+            return new ResponseContext {Status = status};
+        }
+
+        protected static ResponseContext Response(HttpStatus status, object obj)
+        {
+            string json = JsonConvert.SerializeObject(obj);
+            return Response(status, json, MediaType.Json);
+        }
+        
+        protected static ResponseContext Response(HttpStatus status, string content, string contentType)
+        {
+            return new ResponseContext
+            {
+                Status = status,
+                Content = content,
+                ContentType = contentType
+            };
         }
     }
 }

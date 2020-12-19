@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using MTCG.ActionResult;
+using MTCG.ActionResult.Errors;
 using MTCG.Resource;
 using MTCG.Resource.Cards;
 
@@ -8,7 +9,7 @@ namespace MTCG.Service
 {
     public interface IUserService
     {
-        public User GetUser(string username);
+        public OneOf<User, NotFound> GetUser(string username);
 
         public List<User> GetAllUsers();
 
@@ -16,12 +17,10 @@ namespace MTCG.Service
         
         public bool VerifyUser(string username);
 
-        public List<Card> GetDeck(string username);
-        
-        public ActionResult<User> CreateUser(string username, string password);
+        public OneOf<User, UsernameIsTaken, Error> CreateUser(string username, string password);
 
-        public ActionResult<Package> AcquirePackage(string username);
+        public OneOf<Package, NotFound, Error> AcquirePackage(string username);
 
-        public ActionResult<List<Card>> SetDeck(string username, List<Guid> cardIds);
+        public OneOf<List<Card>, NotFound, CardNotOwned, Error> SetDeck(string username, List<Guid> cardIds);
     }
 }
