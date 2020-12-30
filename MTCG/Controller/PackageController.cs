@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
-using MTCG.Request;
+using System.Linq;
+using MTCG.Domain;
+using MTCG.Mappers;
+using MTCG.Requests;
+using MTCG.Results.Errors;
 using MTCG.Server;
-using MTCG.Service;
+using MTCG.Services;
 
 namespace MTCG.Controller
 {
@@ -15,16 +19,53 @@ namespace MTCG.Controller
             _packageService = packageService;
         }
 
-        public ResponseContext Create(IEnumerable<CardCreationRequest> requests)
+        public ResponseContext Create(List<CardCreationRequest> requests, string token)
         {
-            var result = _packageService.CreatePackage(requests);
-            return result.Match(package => Ok(package.Id), Conflict, BadRequest);
+            var cards = CardCreationRequestMapper.Map(requests).ToList();
+            var package = Package.Create();
+
+            foreach (var card in cards)
+            {
+                var addCard = package.AddCard(card);
+
+                if (!addCard.Success)
+                {
+                    return BadRequest(addCard.Error);
+                }
+            }
+            
+            var result = _packageService.CreatePackage(package, token);
+
+            if (result.Success)
+            {
+                package = result.Value;
+                return Ok(package.Id);
+            }
+
+            if (result.HasError<NotPermitted>())
+            {
+                return Forbidden(result.Error);
+            }
+
+            if (result.HasError<DuplicatePackageId, DuplicateCardId>())
+            {
+                return Conflict(result.Error);
+            }
+
+            return BadRequest(result.Error);
         }
 
         public ResponseContext Get(Guid packageId)
         {
-            var package = _packageService.GetPackage(packageId);
-            return package.Match(Ok, NotFound);
+            var result = _packageService.GetPackage(packageId);
+
+            if (!result.Success)
+            {
+                return NotFound(result.Error);
+            }
+            
+            var package = result.Value;
+            return Ok(package);
         }
 
         public ResponseContext GetAll()

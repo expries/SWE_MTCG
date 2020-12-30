@@ -1,14 +1,9 @@
-namespace MTCG.ActionResult.Errors
+namespace MTCG.Results.Errors
 {
-    public class PackageIsEmpty : Error
+    public class PackageDoesNotConsistOf5 : Error
     {
-        public PackageIsEmpty(string message) : base(message)
+        public PackageDoesNotConsistOf5(string message) : base(message)
         {
-        }
-
-        public PackageIsEmpty() : base ("Package is empty.")
-        {
-            
         }
     }
 }
