@@ -74,6 +74,16 @@ namespace MTCG.Controller
         {
             return Response(HttpStatus.NoContent, obj);
         }
+        
+        protected static ResponseContext Forbidden()
+        {
+            return Response(HttpStatus.Forbidden);
+        }
+
+        protected static ResponseContext Forbidden(object obj)
+        {
+            return Response(HttpStatus.Forbidden, obj);
+        }
 
         protected static ResponseContext Response(HttpStatus status)
         {

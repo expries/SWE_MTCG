@@ -1,4 +1,4 @@
-namespace MTCG.Request
+namespace MTCG.Requests
 {
     public class LoginRequest
     {
