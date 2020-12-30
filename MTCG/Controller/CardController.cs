@@ -1,8 +1,6 @@
 using System;
-using MTCG.Repository;
 using MTCG.Server;
-using MTCG.Service;
-using Newtonsoft.Json;
+using MTCG.Services;
 
 namespace MTCG.Controller
 {
@@ -24,7 +22,14 @@ namespace MTCG.Controller
         public ResponseContext Get(Guid cardId)
         {
             var result = _cardService.GetCard(cardId);
-            return result.Match(Ok, NotFound);
+
+            if (!result.Success)
+            {
+                return NotFound(result.Error);
+            }
+            
+            var card = result.Value;
+            return Ok(card);
         }
     }
 }

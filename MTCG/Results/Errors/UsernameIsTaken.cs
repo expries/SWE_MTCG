@@ -1,14 +1,9 @@
-namespace MTCG.ActionResult.Errors
+namespace MTCG.Results.Errors
 {
     public class UsernameIsTaken : Error
     {
         public UsernameIsTaken(string message) : base(message)
         {
-        }
-
-        public UsernameIsTaken() : base ("Username is taken.")
-        {
-            
         }
     }
 }
