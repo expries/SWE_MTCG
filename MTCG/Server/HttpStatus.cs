@@ -1,6 +1,8 @@
 namespace MTCG.Server
 {
-    // HTTP status codes
+    /// <summary>
+    /// HTTP status codes
+    /// </summary>
     public enum HttpStatus
     {
         Ok                  = 200,
@@ -9,16 +11,18 @@ namespace MTCG.Server
         NoContent           = 204,
         BadRequest          = 400,
         Unauthorized        = 401,
+        Forbidden           = 403,
         NotFound            = 404,
         MethodNotAllowed    = 405,
         Conflict            = 409,
         InternalServerError = 500,
         NotImplemented      = 501,
     };
-
-    // extension methods as described in
-    // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/how-to-implement-and-call-a-custom-extension-method
-    //
+    
+    /// <summary>
+    /// extension methods as described in
+    /// https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/classes-and-structs/how-to-implement-and-call-a-custom-extension-method
+    /// </summary>
     internal static class HttpStatusMethods
     {
         // get status code for given HTTP status
@@ -36,6 +40,7 @@ namespace MTCG.Server
                 HttpStatus.Accepted            => "Accepted",
                 HttpStatus.Created             => "Created",
                 HttpStatus.Unauthorized        => "Unauthorized",
+                HttpStatus.Forbidden           => "Forbidden",
                 HttpStatus.BadRequest          => "Bad Request",
                 HttpStatus.NoContent           => "No Content",
                 HttpStatus.NotFound            => "Not Found",
