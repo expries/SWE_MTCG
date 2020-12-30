@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using MTCG.Database.Entity;
 using Npgsql;
 using Npgsql.Schema;
+using NpgsqlTypes;
 
 namespace MTCG.Database
 {
@@ -41,63 +41,63 @@ namespace MTCG.Database
             return new DatabaseManager(Host, Username, Password, Database);
         }
         
-        public TEntity FetchFirstFromQuery<TEntity>(string query) 
+        public TEntity QueryFirstOrDefault<TEntity>(string query) 
             where TEntity : class, new()
         {
             var cmd = new NpgsqlCommand(query);
-            ExecuteQuery(cmd);
+            Query(cmd);
             return GetNextRecord<TEntity>();
         }
         
-        public TEntity FetchFirstFromQuery<TEntity>(string query, object dataObject) 
+        public TEntity QueryFirstOrDefault<TEntity>(string query, object dataObject) 
             where TEntity : class, new()
         {
-            ExecuteQuery(query, dataObject);
+            Query(query, dataObject);
             return GetNextRecord<TEntity>();
         }
         
-        public TEntity FetchFirstFromQuery<TEntity>(NpgsqlCommand cmd) 
+        public TEntity QueryFirstOrDefault<TEntity>(NpgsqlCommand cmd) 
             where TEntity : class, new()
         {
-            ExecuteQuery(cmd);
+            Query(cmd);
             return GetRecord<TEntity>();
         }
         
-        public List<TEntity> FetchFromQuery<TEntity>(string query, int limit = 100) 
+        public List<TEntity> Query<TEntity>(string query, int limit = 100) 
             where TEntity : class, new()
         {
             var cmd = new NpgsqlCommand(query);
-            ExecuteQuery(cmd);
+            Query(cmd);
             return GetRecords<TEntity>(limit);
         }
 
-        public List<TEntity> FetchFromQuery<TEntity>(string query, object dataObject, int limit = 100) 
+        public List<TEntity> Query<TEntity>(string query, object dataObject, int limit = 100) 
             where TEntity : class, new()
         {
-            ExecuteQuery(query, dataObject);
+            Query(query, dataObject);
             return GetRecords<TEntity>(limit);
         }
         
-        public List<TEntity> FetchFromQuery<TEntity>(NpgsqlCommand cmd, int limit = 100) 
+        public List<TEntity> Query<TEntity>(NpgsqlCommand cmd, int limit = 100) 
             where TEntity : class, new()
         {
-            ExecuteQuery(cmd);
+            Query(cmd);
             return GetRecords<TEntity>(limit);
         }
         
-        public void ExecuteQuery(string query)
+        public void Query(string query)
         {
             var cmd = new NpgsqlCommand(query);
-            ExecuteQuery(cmd);
+            Query(cmd);
         }
         
-        public void ExecuteQuery(string query, object dataObject)
+        public void Query(string query, object dataObject)
         {
             var cmd = BuildCommand(query, dataObject);
-            ExecuteQuery(cmd);
+            Query(cmd);
         }
 
-        public void ExecuteQuery(NpgsqlCommand cmd)
+        public void Query(NpgsqlCommand cmd)
         {
             Reconnect();
             cmd.Connection = Connection;
@@ -156,13 +156,7 @@ namespace MTCG.Database
             foreach (var property in readableProperties)
             {
                 var value = property.GetValue(dataObject);
-                
-                if (value is null || value is DBNull)
-                {
-                    continue;
-                }
-                
-                cmd.Parameters.AddWithValue(property.Name, value);
+                cmd.Parameters.AddWithValue(property.Name, value ?? DBNull.Value);
             }
 
             return cmd;
@@ -200,14 +194,16 @@ namespace MTCG.Database
             {
                 var columnAttr = property.GetCustomAttribute(typeof(ColumnAttribute), true) as ColumnAttribute;
                 
-                if (columnAttr is null)  // ignore properties without column attribute
+                // ignore properties without column attribute
+                if (columnAttr is null)
                 {
                     continue;
                 }
 
                 var columnValue = GetColumnValueByName(columnAttr.Name, record);
 
-                if (columnValue is null || columnValue is DBNull)  // if column is null leave property as is 
+                // if column is null leave property as is
+                if (columnValue is null || columnValue is DBNull) 
                 {
                     continue;
                 }
