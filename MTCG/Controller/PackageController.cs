@@ -3,74 +3,89 @@ using System.Collections.Generic;
 using System.Linq;
 using MTCG.Domain;
 using MTCG.Mappers;
+using MTCG.Repositories;
 using MTCG.Requests;
 using MTCG.Results.Errors;
 using MTCG.Server;
-using MTCG.Services;
 
 namespace MTCG.Controller
 {
     public class PackageController : ApiController
     {
-        private readonly IPackageService _packageService;
+        private readonly IPackageRepository _packageRepository;
+        private readonly ICardRepository _cardRepository;
+        private readonly IUserRepository _userRepository;
 
-        public PackageController(IPackageService packageService)
+        public PackageController(IPackageRepository packageRepository, ICardRepository cardRepository, IUserRepository userRepository)
         {
-            _packageService = packageService;
+            _packageRepository = packageRepository;
+            _cardRepository = cardRepository;
+            _userRepository = userRepository;
         }
 
-        public ResponseContext Create(List<CardCreationRequest> requests, string token)
+        public ResponseContext Create(string token, List<CardCreationRequest> requests)
         {
-            var cards = CardCreationRequestMapper.Map(requests).ToList();
-            var package = Package.Create();
-
-            foreach (var card in cards)
+            if (string.IsNullOrWhiteSpace(token))
             {
-                var addCard = package.AddCard(card);
+                return Unauthorized(new {Error = "Authorization is required."});
+            }
 
-                if (!addCard.Success)
-                {
-                    return BadRequest(addCard.Error);
-                }
+            var user = _userRepository.GetByToken(token);
+
+            if (user is null)
+            {
+                return Forbidden(new {Error = "No user with this token exists."});
+            }
+
+            if (user.Username != "admin")
+            {
+                return Forbidden(new {Error = "This function is limited to admins."});
             }
             
-            var result = _packageService.CreatePackage(package, token);
+            var cards = CardCreationRequestMapper.Map(requests).ToList();
+            var existentCards = cards.Where(x => _cardRepository.Get(x.Id) != null).ToList();
 
-            if (result.Success)
+            if (existentCards.Any())
             {
-                package = result.Value;
-                return Ok(package.Id);
+                return Conflict(new
+                {
+                    Error = "Cards with the following IDs already exist: " + string.Join(",", existentCards)
+                });
+            }
+            
+            var createPackage = Package.Create(cards);
+
+            if (createPackage.Success)
+            {
+                var package = createPackage.Value;
+                var newPackage = _packageRepository.Create(package);
+                package.Cards.ForEach(card => _cardRepository.Create(card, newPackage.Id));
+                return Ok(newPackage);
             }
 
-            if (result.HasError<NotPermitted>())
+            if (createPackage.HasError<CardAlreadyInPackage>())
             {
-                return Forbidden(result.Error);
+                return Conflict(new {Error = "The package contains duplicate card IDs."});
             }
-
-            if (result.HasError<DuplicatePackageId, DuplicateCardId>())
-            {
-                return Conflict(result.Error);
-            }
-
-            return BadRequest(result.Error);
+            
+            return BadRequest(createPackage.Error);
         }
 
         public ResponseContext Get(Guid packageId)
         {
-            var result = _packageService.GetPackage(packageId);
+            var package = _packageRepository.Get(packageId);
 
-            if (!result.Success)
+            if (package is null)
             {
-                return NotFound(result.Error);
+                return NotFound(new {Error = "Could not find a package with id " + packageId + "."});
             }
             
-            var package = result.Value;
             return Ok(package);
         }
 
         public ResponseContext GetAll()
         {
-            var packages = _packageService.GetAllPackages();
+            var packages = _packageRepository.GetAll();
             return Ok(packages);
         }
     }

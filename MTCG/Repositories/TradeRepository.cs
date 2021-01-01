@@ -20,7 +20,7 @@ namespace MTCG.Repositories
             _cardRepository = cardRepository;
         }
 
-        public List<Trade> GetAllTrades()
+        public List<Trade> GetAll()
         {
             const string sql = "SELECT tradeID, fk_cardID, fk_userID, cardType, minimumDamage " +
                                "FROM trade";
@@ -30,7 +30,7 @@ namespace MTCG.Repositories
             return trades;
         }
 
-        public Trade GetTrade(Guid tradeId)
+        public Trade Get(Guid tradeId)
         {
             const string sql = "SELECT tradeID, fk_cardID, fk_userID, cardType, minimumDamage " +
                                "FROM trade WHERE tradeId = @TradeID";
@@ -40,7 +40,7 @@ namespace MTCG.Repositories
             return trade;
         }
 
-        public Trade CreateTrade(Trade trade)
+        public Trade Create(Trade trade)
         {
             const string sql = "INSERT INTO trade (tradeID, fk_cardID, fk_userID, cardType, minimumDamage) " +
                                "VALUES (@TradeId, @CardId, @UserId, @CardType, @MinimumDamage)";
@@ -54,10 +54,10 @@ namespace MTCG.Repositories
                 MinimumDamage = trade.MinimumDamage
             });
 
-            return GetTrade(trade.Id);
+            return Get(trade.Id);
         }
 
-        public void DeleteTrade(Trade trade)
+        public void Delete(Trade trade)
         {
             const string sql = "DELETE FROM trade WHERE tradeID = @TradeId";
             _db.ExecuteNonQuery(sql, new {TradeId = trade.Id});
@@ -70,8 +70,8 @@ namespace MTCG.Repositories
                 return null;
             }
             
-            var card = _cardRepository.GetCard(entity.CardId);
-            var seller = _userRepository.GetUserById(entity.UserId);
+            var card = _cardRepository.Get(entity.CardId);
+            var seller = _userRepository.GetById(entity.UserId);
             var tradeCreation = Trade.Create(entity.Id, entity.Type, entity.MinimumDamage, card, seller);
             return tradeCreation.Value;
         }

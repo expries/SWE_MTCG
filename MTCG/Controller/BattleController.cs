@@ -23,7 +23,7 @@ namespace MTCG.Controller
                 return Unauthorized(new {Error = "Authorization is required."});
             }
 
-            var user = _userRepository.GetUserByToken(token);
+            var user = _userRepository.GetByToken(token);
 
             if (user is null)
             {
@@ -35,7 +35,7 @@ namespace MTCG.Controller
                 return Conflict(new {Error = "Can't play: Deck does not consist of 5 cards."});
             }
 
-            var battle = _battleRepository.FindGame(user);
+            var battle = _battleRepository.FindForUser(user);
 
             // found a game => play it (game host will clean up)
             if (battle != null)
@@ -54,7 +54,7 @@ namespace MTCG.Controller
                 return BadRequest(createBattle.Error);
             }
 
-            battle = _battleRepository.CreateGame(createBattle.Value);
+            battle = _battleRepository.Create(createBattle.Value);
 
             if (battle is null)
             {
@@ -83,9 +83,9 @@ namespace MTCG.Controller
             }
 
             // done! update user stats and remove game
-            _userRepository.UpdateUser(battle.PlayerA);
-            _userRepository.UpdateUser(battle.PlayerB);
-            _battleRepository.DeleteGame(battle);
+            _userRepository.Update(battle.PlayerA);
+            _userRepository.Update(battle.PlayerB);
+            _battleRepository.Delete(battle);
             
             string gameLogs = battle.MetaInfo.ToString();
             return Ok(gameLogs);

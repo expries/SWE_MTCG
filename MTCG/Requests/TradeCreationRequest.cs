@@ -11,6 +11,6 @@ namespace MTCG.Requests
         
         public CardType Type { get; set; }
 
-        public int MinimumDamage { get; set; }
+        public double MinimumDamage { get; set; }
     }
 }

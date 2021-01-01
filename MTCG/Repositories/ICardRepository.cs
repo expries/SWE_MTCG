@@ -6,10 +6,10 @@ namespace MTCG.Repositories
 {
     public interface ICardRepository
     {
-        public List<Card> GetAllCards();
+        public List<Card> GetAll();
 
-        public Card GetCard(Guid cardId);
+        public Card Get(Guid cardId);
 
-        public Card CreateCard(Card card, Guid packageId);
+        public Card Create(Card card, Guid packageId);
     }
 }

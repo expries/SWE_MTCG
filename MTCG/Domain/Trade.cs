@@ -18,7 +18,7 @@ namespace MTCG.Domain
 
         public double MinimumDamage { get; private set; }
 
-        private Trade(Guid id, CardType cardType, int minimumDamage, Card cardToTrade, User seller)
+        private Trade(Guid id, CardType cardType, double minimumDamage, Card cardToTrade, User seller)
         {
             Id = id;
             CardType = cardType;
@@ -27,7 +27,7 @@ namespace MTCG.Domain
             Seller = seller;
         }
 
-        public static Result<Trade> Create(Guid id, CardType type, int minimumDamage, Card card, User seller)
+        public static Result<Trade> Create(Guid id, CardType type, double minimumDamage, Card card, User seller)
         {
             if (id.Equals(Guid.Empty))
             {
@@ -39,7 +39,7 @@ namespace MTCG.Domain
                 return new NegativeMinimumDamage("Minimum damage may not be negative.");
             }
 			
-			if (card is null)
+            if (card is null)
             {
                 return new CardIsNull("Card may not be null");
             }
@@ -49,7 +49,7 @@ namespace MTCG.Domain
                 return new SellerIsNull("Seller may not be null");
             }
             
-			if (!seller.Stack.Select(x => x.Id).Contains(card.Id))
+            if (!seller.Stack.Select(x => x.Id).Contains(card.Id))
             {
                 return new SellerDoesNotOwnCard("This user does not own the card with ID " + card.Id + ".");
             }

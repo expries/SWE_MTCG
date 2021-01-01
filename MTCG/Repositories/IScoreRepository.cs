@@ -5,8 +5,8 @@ namespace MTCG.Repositories
 {
     public interface IScoreRepository
     {
-        public StatsEntity GetScoreForUser(string username);
+        public StatsEntity GetByUsername(string username);
 
-        public List<StatsEntity> GetScoreboard();
+        public List<StatsEntity> GetAll();
     }
 }

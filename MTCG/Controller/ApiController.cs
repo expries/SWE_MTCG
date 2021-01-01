@@ -84,6 +84,16 @@ namespace MTCG.Controller
         {
             return Response(HttpStatus.Forbidden, obj);
         }
+        
+        protected static ResponseContext Unauthorized()
+        {
+            return Response(HttpStatus.Unauthorized);
+        }
+
+        protected static ResponseContext Unauthorized(object obj)
+        {
+            return Response(HttpStatus.Unauthorized, obj);
+        }
 
         protected static ResponseContext Response(HttpStatus status)
         {

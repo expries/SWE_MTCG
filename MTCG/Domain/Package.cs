@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using MTCG.Domain.Cards;
 using MTCG.Results;
@@ -40,6 +41,36 @@ namespace MTCG.Domain
             }
 
             return new Package(id);
+        }
+
+        public static Result<Package> Create(List<Card> cards)
+        {
+            var id = Guid.NewGuid();
+            return Create(id, cards);
+        }
+
+        public static Result<Package> Create(Guid id, List<Card> cards)
+        {
+            var creation = Create(id);
+
+            if (!creation.Success)
+            {
+                return creation.Error;
+            }
+
+            var package = creation.Value;
+
+            foreach (var card in cards)
+            {
+                var addCard = package.AddCard(card);
+                
+                if (!addCard.Success)
+                {
+                    return addCard.Error;
+                }
+            }
+
+            return package;
         }
 
         public Result AddCard(Card card)

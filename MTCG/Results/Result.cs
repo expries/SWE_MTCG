@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Net.Http;
-using System.Net.NetworkInformation;
 
 namespace MTCG.Results
 {
@@ -27,12 +25,12 @@ namespace MTCG.Results
 
         public static Result Ok()
         {
-            return new Result();
+            return new ();
         }
         
         public bool HasError<TError>()
         {
-            return typeof(TError) == Error.GetType();
+            return Error != null && typeof(TError) == Error.GetType();
         }
 
         public bool HasError<T1, T2>()

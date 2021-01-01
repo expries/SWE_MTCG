@@ -6,12 +6,12 @@ namespace MTCG.Repositories
 {
     public interface IPackageRepository
     {
-        public List<Package> GetAllPackages();
+        public List<Package> GetAll();
 
-        public Package GetPackage(Guid packageId);
+        public Package Get(Guid packageId);
         
-        public Package CreatePackage(Package package);
+        public Package Create(Package package);
 
-        public void DeletePackage(Package package);
+        public void Delete(Package package);
     }
 }

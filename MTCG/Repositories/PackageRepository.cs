@@ -17,13 +17,13 @@ namespace MTCG.Repositories
             _db = db;
         }
 
-        public void DeletePackage(Package package)
+        public void Delete(Package package)
         {
             const string sql = "DELETE FROM package WHERE packageid = @id";
             _db.ExecuteNonQuery(sql, new {id = package.Id});
         }
 
-        public Package GetPackage(Guid packageId)
+        public Package Get(Guid packageId)
         {
             const string sql = "SELECT packageid, price FROM package " +
                                "WHERE packageid = @id";
@@ -36,12 +36,12 @@ namespace MTCG.Repositories
             }
             
             var package = PackageEntityMapper.Map(entity);
-            var cards = GetCardsInPackage(package.Id);
+            var cards = GetCards(package.Id);
             cards.ForEach(card => package.AddCard(card));
             return package;
         }
 
-        public List<Package> GetAllPackages()
+        public List<Package> GetAll()
         {
             const string sql = "SELECT packageid, price FROM package";
             var entities = _db.Query<PackageEntity>(sql);
@@ -49,23 +49,23 @@ namespace MTCG.Repositories
 
             foreach (var package in packages)
             {
-                var cards = GetCardsInPackage(package.Id);
+                var cards = GetCards(package.Id);
                 cards.ForEach(card => package.AddCard(card));
             }
             
             return packages;
         }
         
-        public Package CreatePackage(Package package)
+        public Package Create(Package package)
         {
             const string sql = "INSERT INTO package (packageid, price) " +
                                "VALUES (@packageId, @price)";
 
             _db.ExecuteNonQuery(sql, new {packageId = package.Id, price = package.Price});
-            return GetPackage(package.Id);
+            return package;
         }
 
-        private List<Card> GetCardsInPackage(Guid packageId)
+        private List<Card> GetCards(Guid packageId)
         {
             const string sql = "SELECT cardid, name, type, element, damage, fk_packageid, monstertype " + 
                                "FROM card_info WHERE fk_packageId = @id";

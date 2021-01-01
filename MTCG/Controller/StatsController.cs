@@ -1,33 +1,40 @@
 ﻿using MTCG.Repositories;
 using MTCG.Server;
-using MTCG.Services;
 
 namespace MTCG.Controller
 {
     public class StatsController : ApiController
     {
-        private readonly IScoreService _scoreService;
+        private readonly IScoreRepository _scoreRepository;
+        private readonly IUserRepository _userRepository;
 
-        public StatsController(IScoreService scoreService)
+        public StatsController(IScoreRepository scoreRepository, IUserRepository userRepository)
         {
-            _scoreService = scoreService;
+            _scoreRepository = scoreRepository;
+            _userRepository = userRepository;
         }
 
         public ResponseContext GetStats(string token)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return BadRequest(new {Error = "Authorization is required."});
+                return Unauthorized(new {Error = "Authorization is required."});
             }
+            
+            var user = _userRepository.GetByToken(token);
 
-            var result = _scoreService.GetStats(token);
-
-            if (!result.Success)
+            if (user is null)
             {
-                return NotFound(result.Error);
+                return Forbidden(new {Error = "No user with this token exists."});
             }
 
-            var stats = result.Value;
+            var stats = _scoreRepository.GetByUsername(user.Username);
+
+            if (stats is null)
+            {
+                return NotFound(new {Error = "Could not find stats for user \"" + user.Username + "\""});
+            }
+            
             return Ok(stats);
         }
 
@@ -35,18 +42,16 @@ namespace MTCG.Controller
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return BadRequest(new {Error = "Authorization is required."});
+                return Unauthorized(new {Error = "Authorization is required."});
             }
-            
-            var result = _scoreService.GetScoreboard(token);
 
-            if (!result.Success)
+            if (_userRepository.GetByToken(token) is null)
             {
-                return Conflict(result.Error);
+                return Forbidden(new {Error = "No user with this token exists."});
             }
 
-            var stats = result.Value;
-            return Ok(stats);
+            var scoreboard = _scoreRepository.GetAll();
+            return Ok(scoreboard);
         }
     }
 }

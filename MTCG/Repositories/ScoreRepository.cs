@@ -13,7 +13,7 @@ namespace MTCG.Repositories
             _db = db;
         }
         
-        public StatsEntity GetScoreForUser(string username)
+        public StatsEntity GetByUsername(string username)
         {
             const string sql = "SELECT rank, username, elo, total, wins, loses, draws, winRate " +
                                "FROM scoreboard WHERE username = @username";
@@ -22,7 +22,7 @@ namespace MTCG.Repositories
             return entity;
         }
 
-        public List<StatsEntity> GetScoreboard()
+        public List<StatsEntity> GetAll()
         {
             const string sql = "SELECT rank, username, elo, total, wins, loses, draws, winRate " +
                                "FROM scoreboard";

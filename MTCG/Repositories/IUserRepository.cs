@@ -8,16 +8,16 @@ namespace MTCG.Repositories
 {
     public interface IUserRepository
     {
-        public User GetUserByUsername(string username);
+        public User GetByUsername(string username);
 
-        public User GetUserByToken(string token);
+        public User GetByToken(string token);
 
-        public User GetUserById(Guid userId);
+        public User GetById(Guid userId);
         
-        public List<User> GetAllUsers();
+        public List<User> GetAll();
 
-        public User CreateUser(User user);
+        public User Create(User user);
         
-        public User UpdateUser(User user);
+        public User Update(User user);
     }
 }

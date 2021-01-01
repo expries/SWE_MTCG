@@ -14,13 +14,13 @@ namespace MTCG.Repositories
             _queue = new Dictionary<Guid, Battle>();
         }
 
-        public void DeleteGame(Battle battle)
+        public void Delete(Battle battle)
         {
             var storedBattle = _queue.FirstOrDefault(x => x.Value.Equals(battle));
             _queue.Remove(storedBattle.Key);
         }
         
-        public Battle FindGame(User user)
+        public Battle FindForUser(User user)
         {
             if (_queue.Count == 0)
             {
@@ -32,7 +32,7 @@ namespace MTCG.Repositories
             return battle;
         }
 
-        public Battle CreateGame(Battle battle)
+        public Battle Create(Battle battle)
         {
             if (_queue.ContainsKey(battle.PlayerA.Id))
             {

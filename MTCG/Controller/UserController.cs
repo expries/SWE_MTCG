@@ -1,102 +1,126 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using MTCG.Domain;
+using MTCG.Repositories;
 using MTCG.Requests;
-using MTCG.Results.Errors;
 using MTCG.Server;
-using MTCG.Services;
 
 namespace MTCG.Controller
 {
     public class UserController : ApiController
     {
-        private readonly IUserService _userService;
+        private readonly IUserRepository _userRepository;
+        private readonly IPackageRepository _packageRepository;
+        private readonly ICardRepository _cardRepository;
 
-        public UserController(IUserService userService)
+        public UserController(IUserRepository userRepository, IPackageRepository packageRepository, ICardRepository cardRepository)
         {
-            _userService = userService;
+            _userRepository = userRepository;
+            _packageRepository = packageRepository;
+            _cardRepository = cardRepository;
         }
 
-        public ResponseContext Register(RegistrationRequest request)
+        public ResponseContext RegisterUser(RegistrationRequest request)
         {
-            var registration = _userService.CreateUser(request.Username, request.Password);
+            var user = _userRepository.GetByUsername(request.Username);
 
-            if (!registration.Success)
+            if (user != null)
             {
-                return BadRequest(registration.Error);
+                return Conflict(new {Error = "This username is taken."});
             }
 
-            var user = registration.Value;
-            return Ok(user.Token);
+            var userCreation = User.Create(request.Username,request.Password);
+
+            if (!userCreation.Success)
+            {
+                return BadRequest(userCreation.Error);
+            }
+
+            user = userCreation.Value;
+            user.AddCoins(10);
+            var newUser = _userRepository.Create(user);
+            
+            return Ok(newUser.Token);
         }
 
-        public ResponseContext UpdateUser(string username, UserUpdateRequest request, string token)
+        public ResponseContext UpdateUser(string token, string username, UserUpdateRequest request)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return BadRequest(new {Error = "Authorization is required."});
-            }
-
-            var result = _userService.UpdateUser(username, request, token);
-
-            if (result.Success)
-            {
-                var user = result.Value;
-                return Ok(user);
-            }
-
-            if (result.HasError<UserNotFound>())
-            {
-                return NotFound(result.Error);
+                return Unauthorized(new {Error = "Authorization is required."});
             }
             
-            if (result.HasError<NotPermitted>())
+            var user = _userRepository.GetByToken(token);
+
+            if (user is null)
             {
-                return Forbidden(result.Error);
+                return Forbidden(new {Error = "No user with this token exists."});
+            }
+            
+            if (user.Username != username)
+            {
+                return Forbidden(new {Error = "You are not permitted to alter this user's profile."});
+            }
+            
+            var changeName = user.ChangeName(request.Name);
+
+            if (!changeName.Success)
+            {
+                return BadRequest(changeName.Error);
             }
 
-            return BadRequest(result.Error);
+            user.Bio = request.Bio;
+            user.Image = request.Image;
+            var updatedUser = _userRepository.Update(user);
+            
+            return Ok(updatedUser);
         }
 
-        public ResponseContext Get(string username)
+        public ResponseContext GetUser(string username)
         {
-            var result = _userService.GetUser(username);
+            var user = _userRepository.GetByUsername(username);
 
-            if (!result.Success)
+            if (user is null)
             {
-                return NotFound(result.Error);
+                return NotFound(new {Error = "No user with this username exists."});
             }
-
-            var user = result.Value;
+            
             return Ok(user);
         }
 
-        public ResponseContext GetAll()
+        public ResponseContext GetAllUsers()
         {
-            var users = _userService.GetAllUsers();
+            var users = _userRepository.GetAll();
             return Ok(users);
         }
 
         public ResponseContext Login(LoginRequest request)
         {
-            bool valid = _userService.CheckCredentials(request.Username, request.Password);
-            return valid ? Ok() : BadRequest("No user with this username and password exists.") ;
+            var user = _userRepository.GetByUsername(request.Username);
+
+            if (user is null || !user.ComparePassword(request.Password))
+            {
+                return Forbidden(new {Error = "No user with this username and password exists."});
+            }
+
+            return Ok();
         }
 
-        public ResponseContext GetCards(string token)
+        public ResponseContext GetStack(string token)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return BadRequest(new {Error = "Authorization is required."});
+                return Unauthorized(new {Error = "Authorization is required."});
             }
 
-            var result = _userService.GetUser(token);
+            var user = _userRepository.GetByToken(token);
 
-            if (!result.Success)
+            if (user is null)
             {
-                return NotFound(result.Error);
+                return Forbidden(new {Error = "Authentication failed with provided token."});
             }
             
-            var user = result.Value;
             return Ok(user.Stack);
         }
 
@@ -104,64 +128,108 @@ namespace MTCG.Controller
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return BadRequest(new {Error = "Authorization is required."});
+                return Unauthorized(new {Error = "Authorization is required."});
             }
 
-            var purchase = _userService.AcquirePackage(token);
+            var user = _userRepository.GetByToken(token);
 
-            if (purchase.Success)
+            if (user is null)
             {
-                var package = purchase.Value;
-                return Ok(package);
+                return Forbidden(new {Error = "Authentication failed with provided token."});
             }
 
-            if (purchase.HasError<UserNotFound>())
+            var package = GetUnownedPackage(user);
+
+            if (package is null)
             {
-                return NotFound(purchase.Error);
+                return Conflict(new {Error = "User already owns all packages"});
             }
 
-            return Conflict(purchase.Error);
+            var purchase = user.PurchasePackage(package);
+
+            if (!purchase.Success)
+            {
+                return Conflict(purchase.Error);
+            }
+
+            _userRepository.Update(user);
+            return Ok(package);
         }
 
         public ResponseContext GetDeck(string token)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return BadRequest(new {Error = "Authorization is required."});
+                return Unauthorized(new {Error = "Authorization is required."});
             }
             
-            var result = _userService.GetUserByAuthToken(token);
+            var user = _userRepository.GetByToken(token);
 
-            if (!result.Success)
+            if (user is null)
             {
-                return NotFound(result.Error);
+                return Forbidden(new {Error = "Authentication failed with provided token."});
             }
-
-            var user = result.Value;
+            
             return Ok(user.Deck);
         }
 
-        public ResponseContext UpdateDeck(List<Guid> cardIds, string token)
+        public ResponseContext UpdateDeck(string token, List<Guid> cardIds)
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return BadRequest(new {Error = "Authorization is required."});
+                return Unauthorized(new {Error = "Authorization is required."});
             }
 
-            var result = _userService.UpdateDeck(token, cardIds);
+            var user = _userRepository.GetByToken(token);
 
-            if (result.Success)
+            if (user is null)
             {
-                var deck = result.Value;
-                return Ok(deck);
+                return Forbidden(new {Error = "Authentication failed with provided token."});
             }
 
-            if (result.HasError<UserNotFound, CardNotFound>())
+            var cardsNotFound = cardIds.Where(x => _cardRepository.Get(x) is null).ToList();
+
+            if (cardsNotFound.Any())
             {
-                return NotFound(result.Error);
+                return NotFound(new 
+                    {Error = "These cards don't exist: " + string.Join(", ", cardsNotFound)});
+            }
+
+            var cards = cardIds.Select(id => _cardRepository.Get(id)).ToList();
+            var setDeck = user.SetDeck(cards);
+
+            if (!setDeck.Success)
+            {
+                return Conflict(setDeck.Error);
             }
             
-            return Conflict(result.Error);
+            var updatedUser = _userRepository.Update(user);
+            return Ok(updatedUser.Deck);
+        }
+        
+        private Package GetUnownedPackage(User user)
+        {
+            var cardIds = user.Stack.Select(card => card.Id);
+            var packages = _packageRepository.GetAll();
+            var unownedPackages = new List<Package>();
+            
+            foreach (var package in packages)
+            {
+                var unownedCards = package.Cards.Where(card => !cardIds.Contains(card.Id));
+
+                if (unownedCards.Any())
+                {
+                    unownedPackages.Add(package);
+                }
+            }
+
+            if (!unownedPackages.Any())
+            {
+                return null;
+            }
+
+            int randomIndex = new Random().Next(unownedPackages.Count);
+            return unownedPackages[randomIndex];
         }
     }
 }

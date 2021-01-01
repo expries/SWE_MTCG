@@ -17,7 +17,7 @@ namespace MTCG.Repositories
             _db = db;
         }
 
-        public Card GetCard(Guid cardId)
+        public Card Get(Guid cardId)
         {
             const string sql = "SELECT cardid, name, type, element, damage, fk_packageid, monstertype " + 
                                "FROM card_info WHERE cardid = @cardId";
@@ -33,7 +33,7 @@ namespace MTCG.Repositories
             return card;
         }
 
-        public List<Card> GetAllCards()
+        public List<Card> GetAll()
         {
             const string sql = "SELECT cardid, name, type, element, damage, fk_packageid, monstertype " + 
                                "FROM card_info";
@@ -43,7 +43,7 @@ namespace MTCG.Repositories
             return cards;
         }
         
-        public Card CreateCard(Card card, Guid packageId)
+        public Card Create(Card card, Guid packageId)
         {
             const string sql = "INSERT INTO card (cardid, name, damage, element, type, fk_packageid) " +
                                "VALUES (@cardID, @name, @damage, @element, @type, @fk_packageId)";

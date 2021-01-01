@@ -1,34 +1,33 @@
 using System;
+using MTCG.Repositories;
 using MTCG.Server;
-using MTCG.Services;
 
 namespace MTCG.Controller
 {
     public class CardController : ApiController
     {
-        private readonly ICardService _cardService;
+        private readonly ICardRepository _cardRepository;
 
-        public CardController(ICardService cardService)
+        public CardController(ICardRepository cardRepository)
         {
-            _cardService = cardService;
+            _cardRepository = cardRepository;
         }
 
         public ResponseContext GetAll()
         {
-            var cards = _cardService.GetAllCards();
+            var cards = _cardRepository.GetAll();
             return Ok(cards);
         }
 
         public ResponseContext Get(Guid cardId)
         {
-            var result = _cardService.GetCard(cardId);
+            var card = _cardRepository.Get(cardId);
 
-            if (!result.Success)
+            if (card is null)
             {
-                return NotFound(result.Error);
+                return NotFound(new {Error = "Found no card with id " + cardId + "."});
             }
             
-            var card = result.Value;
             return Ok(card);
         }
     }

@@ -18,63 +18,40 @@ namespace MTCG.Repositories
             _db = db;
         }
 
-        public User GetUserById(Guid userId)
+        public User GetById(Guid userId)
         {
             const string sql = "SELECT userID, username, password, name, bio, image, " + 
                                "       token, coins, wins, draws, loses, elo " +
                                "FROM \"user\" WHERE userID = @userID";
 
             var entity = _db.QueryFirstOrDefault<UserEntity>(sql, new {userID = userId});
-
-            if (entity is null)
-            {
-                return null;
-            }
-            
-            var user = UserEntityMapper.Map(entity);
-            var stack = GetStack(entity.Username);
-            var deck = GetDeck(entity.Username);
-            
-            stack.ForEach(card => user.AddToCollection(card));
-            deck.ForEach(card => user.AddToDeck(card));
-
+            var user = PopulateEntity(entity);
             return user;
         }
 
-        public User GetUserByUsername(string username)
+        public User GetByUsername(string username)
         {
             const string sql = "SELECT userID, username, password, name, bio, image, " + 
                                "       token, coins, wins, draws, loses, elo " +
                                "FROM \"user\" WHERE username = @username";
 
             var entity = _db.QueryFirstOrDefault<UserEntity>(sql, new {Username = username});
-
-            if (entity is null)
-            {
-                return null;
-            }
-            
-            var user = UserEntityMapper.Map(entity);
-            var stack = GetStack(username);
-            var deck = GetDeck(username);
-            
-            stack.ForEach(card => user.AddToCollection(card));
-            deck.ForEach(card => user.AddToDeck(card));
-
+            var user = PopulateEntity(entity);
             return user;
         }
 
-        public User GetUserByToken(string token)
+        public User GetByToken(string token)
         {
             const string sql = "SELECT userID, username, password, name, bio, image, " + 
                                "       token, coins, wins, draws, loses, elo " +
                                "FROM \"user\" WHERE token = @token";
 
             var entity = _db.QueryFirstOrDefault<UserEntity>(sql, new {Token = token});
-            return entity is null ? null : GetUserByUsername(entity.Username);
+            var user = PopulateEntity(entity);
+            return user;
         }
 
-        public List<User> GetAllUsers()
+        public List<User> GetAll()
         {
             const string sql = "SELECT userID, username, password, name, bio, image, " + 
                                "       token, coins, wins, draws, loses, elo " +
@@ -94,7 +71,7 @@ namespace MTCG.Repositories
             return users;
         }
 
-        public User CreateUser(User user)
+        public User Create(User user)
         {
             const string sql = "INSERT INTO \"user\" (userID, username, password, token, coins) " +
                                "VALUES (@userID, @username, @password, @token, @coins)";
@@ -104,18 +81,18 @@ namespace MTCG.Repositories
             
             _db.ExecuteNonQuery(sql, userData);
 
-            return GetUserByUsername(user.Username);
+            return GetByUsername(user.Username);
         }
         
-        public User UpdateUser(User user)
+        public User Update(User user)
         {
-            UpdateUserData(user);
+            UpdateData(user);
             UpdateStack(user);
             SetDeck(user);
             return user;
         }
 
-        private void UpdateUserData(User user)
+        private void UpdateData(User user)
         {
             const string sql = "UPDATE \"user\" " +
                                "SET name = @Name, " +
@@ -140,9 +117,25 @@ namespace MTCG.Repositories
                 Username = user.Username});
         }
         
+        private User PopulateEntity(UserEntity entity)
+        {
+            if (entity is null)
+            {
+                return null;
+            }
+            
+            var user = UserEntityMapper.Map(entity);
+            var stack = GetStack(entity.Username);
+            var deck = GetDeck(entity.Username);
+            
+            stack.ForEach(card => user.AddToCollection(card));
+            deck.ForEach(card => user.AddToDeck(card));
+            return user;
+        }
+        
         private void UpdateStack(User user)
         {
-            var storedUser = GetUserByUsername(user.Username);
+            var storedUser = GetByUsername(user.Username);
             var stackIds = user.Stack.Select(x => x.Id).ToList();
             var storedStackIds = storedUser.Stack.Select(x => x.Id).ToList();
             

@@ -87,7 +87,7 @@ namespace MTCG.Domain
             return Create(username, password, id, name, bio, image);
         }
 
-        public Result SetName(string name)
+        public Result ChangeName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -114,6 +114,23 @@ namespace MTCG.Domain
             return Result.Ok();
         }
 
+        public void AddDraw()
+        {
+            Draws++;
+        }
+        
+        public void AddWin()
+        {
+            Wins++;
+            Elo++;
+        }
+
+        public void AddLose()
+        {
+            Loses++;
+            Elo--;
+        }
+
         public Result RemoveFromCollection(Card card)
         {
             var cardInStack = Stack.FirstOrDefault(x => x.Id == card.Id);
@@ -135,6 +152,32 @@ namespace MTCG.Domain
         public void ClearDeck()
         {
             _deckIds.Clear();
+        }
+
+        public Result SetDeck(List<Card> cards)
+        {
+            if (cards.Any(x => x is null))
+            {
+                return new CardIsNull("Some cards are null");
+            }
+
+            if (cards.Count != 5)
+            {
+                return new DeckIsNotFull("Deck does not consist of 5 cards");
+            }
+
+            var stackIds = Stack.Select(x => x.Id);
+            var unownedCards = cards.Where(x => !stackIds.Contains(x.Id)).Select(x => x.Id).ToList();
+
+            if (unownedCards.Any())
+            {
+                return new CardNotInStack(
+                    "These cards are not in the stack: " + string.Join(",", unownedCards));
+            }
+            
+            _deckIds.Clear();
+            cards.ForEach(x => AddToDeck(x));
+            return Result.Ok();
         }
 
         public Result AddToDeck(Card card)
@@ -168,6 +211,22 @@ namespace MTCG.Domain
             _deckIds.Remove(card.Id);
             return Result.Ok();
         }
+
+        public Result PurchasePackage(Package package)
+        {
+            if (package is null)
+            {
+                return new PackageIsNull("Package is required for a user to acquire it.");
+            }
+
+            if (package.Price > Coins)
+            {
+                return new NotEnoughCoins("The user does not own enough coins to purchase the package.");
+            }
+            
+            package.Cards.ForEach(card => AddToCollection(card));
+            return Result.Ok();
+        }
         
         public bool ComparePassword(string password)
         {
@@ -183,14 +242,14 @@ namespace MTCG.Domain
         {
             return Stack.Where(card => _deckIds.Contains(card.Id)).ToList();
         }
-        
+
         private static string CalculateSha256Hash(string input)
         {
             using var hasher = SHA256.Create();
             byte[] inputBytes = Encoding.UTF8.GetBytes(input);
             byte[] hashBytes = hasher.ComputeHash(inputBytes);
             var builder = new StringBuilder();  
-                
+            
             foreach (byte t in hashBytes)
             {
                 builder.Append(t.ToString("x2"));
