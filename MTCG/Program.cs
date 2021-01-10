@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using MTCG.Controllers;
 using MTCG.Database;
 using MTCG.Domain.Cards;
@@ -14,9 +13,9 @@ using Newtonsoft.Json;
 
 namespace MTCG
 {
-    class Program
+    internal static class Program
     {
-        static void Main(string[] args)
+        private static void Main()
         {
             DatabaseManager.MapEnum<Element>("element_type");
             DatabaseManager.MapEnum<CardType>("card_type");
