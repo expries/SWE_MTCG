@@ -69,7 +69,7 @@ namespace MTCG.Controllers
                 var package = createPackage.Value;
                 var newPackage = _packageRepository.Create(package);
                 package.Cards.ForEach(card => _cardRepository.Create(card, newPackage.Id));
-                return Created(newPackage);
+                return Created();
             }
 
             if (createPackage.HasError<CardAlreadyInPackage>())

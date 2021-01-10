@@ -76,6 +76,11 @@ namespace MTCG.Repositories
 
         private Message MapEntity(MessageEntity entity)
         {
+            if (entity is null)
+            {
+                return null;
+            }
+            
             var sender = _userRepository.GetByUsername(entity.Sender);
             var receiver = _userRepository.GetByUsername(entity.Receiver);
             var message = Message.Create(entity.Id, sender, receiver, entity.Message, entity.Timestamp);

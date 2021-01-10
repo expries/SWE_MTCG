@@ -1,6 +1,4 @@
-﻿using System;
-using System.Resources;
-using System.Threading;
+﻿using System.Threading;
 using MTCG.Domain;
 using MTCG.Repositories;
 using MTCG.Server;
@@ -92,7 +90,11 @@ namespace MTCG.Controllers
             // done! update user stats and remove game
             _userRepository.Update(game.PlayerA);
             _userRepository.Update(game.PlayerB);
-            _gameRepository.Delete(game);
+            
+            lock (_gameRepository)
+            {
+                _gameRepository.Delete(game);
+            }
             
             string gameLog = game.Log.ToString();
             return Ok(gameLog);

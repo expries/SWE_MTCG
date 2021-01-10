@@ -20,6 +20,11 @@ namespace MTCG.Controllers
         {
             return Response(HttpStatus.Ok, content);
         }
+
+        protected static ResponseContext Ok(string content, string contentType)
+        {
+            return Response(HttpStatus.Ok, content, contentType);
+        }
         
         protected static ResponseContext BadRequest()
         {

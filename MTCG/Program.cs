@@ -119,6 +119,12 @@ namespace MTCG
                 return userController.GetDeck(token);
             });
             
+            server.RegisterRoute("GET", "/deck?format=plain", context =>
+            {
+                string token = context.Authorization;
+                return userController.GetDeckPlaintext(token);
+            });
+            
             server.RegisterRoute("PUT", "/deck", context =>
             {
                 string token = context.Authorization;
@@ -198,7 +204,7 @@ namespace MTCG
                 return messageController.DeleteMessage(token, messageId);
             });
             
-            server.RegisterRoute("GET", "/chat", context =>
+            server.RegisterRoute("GET", "/inbox", context =>
             {
                 string token = context.Authorization;
                 return messageController.GetInbox(token);
@@ -233,9 +239,9 @@ namespace MTCG
                     Console.WriteLine(exception.Message);
                     error = new Error("An error has occurred.");
                     status = HttpStatus.InternalServerError;
+                    throw exception;
                 }
                 
-                throw exception;
                 string json = JsonConvert.SerializeObject(error);
                 return new ResponseContext(status, json, MediaType.Json);
             });

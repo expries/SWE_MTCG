@@ -17,7 +17,7 @@ namespace MTCG.Repositories
         public void Delete(Game game)
         {
             var storedGame = _games.FirstOrDefault(x => x.Value.Equals(game));
-            _games.TryRemove(storedGame);
+            _games.TryRemove(storedGame.Key, out game);
         }
         
         public Game FindForUser(User user)

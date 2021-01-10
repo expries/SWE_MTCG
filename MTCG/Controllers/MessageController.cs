@@ -57,8 +57,8 @@ namespace MTCG.Controllers
             }
 
             var message = createMessage.Value;
-            var newMessage = _messageRepository.Create(message);
-            return Created(newMessage);
+            _messageRepository.Create(message);
+            return Created();
         }
 
         public ResponseContext GetInbox(string token)

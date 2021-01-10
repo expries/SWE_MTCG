@@ -5,7 +5,7 @@ namespace MTCG.Results
 {
     public class Result
     {
-        public Error Error { get; protected init; }
+        public Error Error { get; protected set; }
         
         public bool Success => Error is null;
         

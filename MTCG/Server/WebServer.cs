@@ -58,6 +58,8 @@ namespace MTCG.Server
         /// <param name="handler"></param>
         public void RegisterRoute(string method, string endpoint, Func<RequestContext, ResponseContext> handler)
         {
+            endpoint = endpoint.Replace("?", "\\?");
+            
             if (!_routes.ContainsKey(endpoint))
             {
                 _routes[endpoint] = new Dictionary<string, Func<RequestContext, ResponseContext>>();
@@ -115,7 +117,7 @@ namespace MTCG.Server
             {
                 tcpClient.ReadRequest();
                 var request = tcpClient.GetRequest();
-                //request.PrintProperties();
+                request.PrintProperties();
                 
                 var response = RouteRequest(request);
                 response.Headers["Connection"] = "close";
@@ -147,7 +149,7 @@ namespace MTCG.Server
                 request.PathParam = GetParameters(request.Path, endpoint);
                 response = InvokeRoute(endpoint, request);
             }
-            catch (BadImageFormatException error)
+            catch (Exception error)
             {
                 if (_exceptionHandler is null)
                 {

@@ -44,7 +44,7 @@ namespace MTCG.Controllers
             user.AddCoins(20);
             var newUser = _userRepository.Create(user);
             
-            return Created(newUser.Token);
+            return Created(newUser);
         }
 
         public ResponseContext UpdateUser(string token, string username, UserUpdateRequest request)
@@ -75,9 +75,9 @@ namespace MTCG.Controllers
 
             user.Bio = request.Bio;
             user.Image = request.Image;
-            var updatedUser = _userRepository.Update(user);
+            _userRepository.Update(user);
             
-            return Ok(updatedUser);
+            return NoContent();
         }
 
         public ResponseContext GetUser(string token, string username)
@@ -96,7 +96,7 @@ namespace MTCG.Controllers
             
             if (user.Token != token)
             {
-                return Forbidden("You are not allowed to view this user's profile.");
+                return Forbidden("You are not permitted to to view this user's profile.");
             }
 
             return Ok(user);
@@ -227,8 +227,36 @@ namespace MTCG.Controllers
                 return Conflict(setDeck.Error);
             }
             
-            var updatedUser = _userRepository.Update(user);
-            return Ok(updatedUser.Deck);
+            _userRepository.Update(user);
+            return NoContent();
+        }
+
+        public ResponseContext GetDeckPlaintext(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return Unauthorized("Authorization is required.");
+            }
+            
+            var user = _userRepository.GetByToken(token);
+
+            if (user is null)
+            {
+                return Unauthorized("Authentication failed with provided token.");
+            }
+
+            string output = string.Empty;
+
+            foreach (var card in user.Deck)
+            {
+                output += "Id=" + card.Id + ";" + 
+                          "Name=" + card.Name + ";" + 
+                          "Type=" + card.Type + ";" + 
+                          "Element=" + card.Element + ";" + 
+                          "Damage=" + card.Damage + "\n";
+            }
+            
+            return Ok(output, MediaType.Plaintext);
         }
     }
 }

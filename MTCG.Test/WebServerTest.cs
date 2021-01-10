@@ -1,6 +1,7 @@
 using System;
+using Microsoft.VisualStudio.TestPlatform.CommunicationUtilities.ObjectModel;
 using Moq;
-using MTCG.Exception;
+using MTCG.Exceptions;
 using MTCG.Server;
 using MTCG.Server.TcpWrapper;
 using NUnit.Framework;
@@ -20,11 +21,15 @@ namespace MTCG.Test
             _tcpListener = new Mock<ITcpListener>();
             _client = new Mock<ITcpClient>();
             _server = new WebServer();
+            _server.Start();
         }
 
         [SetUp]
         public void SetupMockMethods()
         {
+            _client.Setup(client => client.ReadRequest())
+                .Callback(() => {});
+            
             _client.Setup(client => client.GetRequest())
                 .Returns(() => new RequestContext());
 
@@ -41,19 +46,6 @@ namespace MTCG.Test
                 .Returns(() => _client.Object);
         }
 
-        [Test]
-        public void Test_Listen_TcpListener_StartsAndCallsAcceptClient()
-        {
-            // arrange
-
-            // act
-            _server.Listen(_tcpListener.Object);
-            
-            // assert
-            _tcpListener.Verify(x => x.Start(), Times.Once);
-            _tcpListener.Verify(x => x.AcceptTcpClient(), Times.Once);
-        }
-        
         [Test]
         public void Test_Listen_ParameterlessRouteInvoked()
         {
@@ -73,7 +65,7 @@ namespace MTCG.Test
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
             _server.RegisterRoute("GET", "/resource", _ => response);
-            _server.Listen(_tcpListener.Object);
+            _server.ServeClient(_client.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -92,16 +84,13 @@ namespace MTCG.Test
             };
 
             // act
-            _server.RegisterRoute("GET", "/resource/{id}", context =>
+            _server.RegisterRoute("GET", "/resource/{id}", context => new ResponseContext
             {
-                return new ResponseContext
-                {
-                    Content = context.PathParam["id"]
-                };
+                Content = context.PathParam["id"]
             });
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
+            _server.ServeClient(_client.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -133,7 +122,7 @@ namespace MTCG.Test
             });
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);    
+            _server.ServeClient(_client.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -155,7 +144,7 @@ namespace MTCG.Test
             // act
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
+            _server.ServeClient(_client.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -167,7 +156,7 @@ namespace MTCG.Test
         public void Test_Listen_HttpVerbNotSupportedForRoute()
         {
             // arrange
-            const HttpStatus status = HttpStatus.NotImplemented;
+            const HttpStatus status = HttpStatus.MethodNotAllowed;
             var request = new RequestContext
             {
                 Method = "TRACE",
@@ -178,7 +167,7 @@ namespace MTCG.Test
             _server.RegisterRoute("GET", "/resource", _ => null);
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
+            _server.ServeClient(_client.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -198,10 +187,9 @@ namespace MTCG.Test
             };
 
             // act
-            _server.RegisterRoute("GET", "/resource", _ => throw new NotFoundException());
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
+            _server.ServeClient(_client.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
@@ -221,40 +209,19 @@ namespace MTCG.Test
             };
 
             // act
-            _server.RegisterRoute("GET", "/resource", _ => throw new BadRequestException());
+            _server.RegisterRoute("GET", "/resource", 
+                _ => throw new BadRequestException("bad request"));
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
+            _server.AddExceptionHandler(x => new ResponseContext(status));
+            _server.ServeClient(_client.Object);
             
             // assert
             _client.Verify(client => client.GetRequest(), Times.Once);
             _client.Verify(client => client.SendResponse(
                 It.Is<ResponseContext>(response => response.Status.Equals(status))));
         }
-        
-        [Test]
-        public void Test_Listen_InternalServerErrorException()
-        {
-            // arrange
-            const HttpStatus status = HttpStatus.InternalServerError;
-            var request = new RequestContext
-            {
-                Method = "GET",
-                Path = "/resource"
-            };
 
-            // act
-            _server.RegisterRoute("GET", "/resource", _ => throw new Exception());
-            _client.Setup(client => client.GetRequest())
-                .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
-            
-            // assert
-            _client.Verify(client => client.GetRequest(), Times.Once);
-            _client.Verify(client => client.SendResponse(
-                It.Is<ResponseContext>(response => response.Status.Equals(status))));
-        }
-        
         [Test]
         public void Test_Listen_MultipleMethodsOnSameEndpoint()
         {
@@ -269,12 +236,12 @@ namespace MTCG.Test
             request.Method = "GET";
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
+            _server.ServeClient(_client.Object);
 
             request.Method = "POST";
             _client.Setup(client => client.GetRequest())
                 .Returns(() => request);
-            _server.Listen(_tcpListener.Object);
+            _server.ServeClient(_client.Object);
 
             // assert
             _client.Verify(client => client.GetRequest(), Times.Exactly(2));

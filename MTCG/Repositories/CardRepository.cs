@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using MTCG.Database;
 using MTCG.Domain.Cards;
 using MTCG.Entities;
@@ -40,20 +41,39 @@ namespace MTCG.Repositories
         {
             const string sql = "INSERT INTO card (cardid, name, damage, element, type, monsterType, fk_packageid) " +
                                "VALUES (@CardId, @Name, @Damage, @Element, @Type, @MonsterType, @Fk_packageId)";
-            
-            dynamic monsterType = card is MonsterCard monsterCard ? monsterCard.MonsterType : DBNull.Value;
 
-            _db.Execute(sql, new {
+            var properties= card is MonsterCard monsterCard
+                ? GetMonsterCardProperties(monsterCard, packageId)
+                : GetCardProperties(card, packageId);
+
+            _db.Execute(sql, properties);
+            return card;
+        }
+
+        private static object GetCardProperties(Card card, Guid packageId)
+        {
+            return new {
                 CardId = card.Id, 
                 Name = card.Name, 
                 Damage = card.Damage, 
                 Element = card.Element,
                 Type = card.Type, 
-                MonsterType = monsterType,
+                MonsterType = DBNull.Value,
                 Fk_packageId = packageId
-            });
-
-            return card;
+            };
+        }
+        
+        private static object GetMonsterCardProperties(MonsterCard card, Guid packageId)
+        {
+            return new {
+                CardId = card.Id, 
+                Name = card.Name, 
+                Damage = card.Damage, 
+                Element = card.Element,
+                Type = card.Type, 
+                MonsterType = card.MonsterType,
+                Fk_packageId = packageId
+            };
         }
     }
 }

@@ -75,8 +75,8 @@ namespace MTCG.Controllers
             if (createTrade.Success)
             {
                 var trade = createTrade.Value;
-                var newTrade = _tradeRepository.Create(trade);
-                return NoContent();
+                _tradeRepository.Create(trade);
+                return Created();
             }
 
             if (createTrade.HasError<SellerDoesNotOwnCard>())
@@ -125,7 +125,8 @@ namespace MTCG.Controllers
             _userRepository.Update(user);
             _userRepository.Update(trade.Seller);
             _tradeRepository.Delete(trade);
-            return Ok(trade);
+            
+            return NoContent();
         }
 
         public ResponseContext DeleteTrade(string token, Guid tradeId)
