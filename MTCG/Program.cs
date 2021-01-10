@@ -217,13 +217,6 @@ namespace MTCG
                 return messageController.ReadConversation(token, chatPartner);
             });
 
-            // EXTRA ENDPOINTS FOR DEVELOPMENT
-            server.RegisterRoute("GET", "/wait", _ =>
-            {
-                Thread.Sleep(20000);
-                return new ResponseContext(HttpStatus.Ok, "Waited!");
-            });
-            
             server.AddExceptionHandler(exception =>
             {
                 Error error;
@@ -236,10 +229,8 @@ namespace MTCG
                 }
                 else
                 {
-                    Console.WriteLine(exception.Message);
                     error = new Error("An error has occurred.");
                     status = HttpStatus.InternalServerError;
-                    throw exception;
                 }
                 
                 string json = JsonConvert.SerializeObject(error);
