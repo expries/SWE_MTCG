@@ -1,21 +1,25 @@
+using MTCG.Results;
+
 namespace MTCG.Domain.Cards.MonsterCards
 {
     public class Knight : MonsterCard
     {
-        public Knight(string name, double damage) : base(name, damage)
+        private Knight(double damage) : base("Knight", damage)
         {
             Element = Element.Normal;
             MonsterType = MonsterType.Knight;
         }
-
-        protected internal override bool AttackedBy(Card attacker)
+        
+        public static Result<Card> Create(double damage)
         {
-            if (attacker.Type != CardType.Spell)
+            var validateDamage = ValidateDamage(damage);
+            
+            if (!validateDamage.Success)
             {
-                return base.AttackedBy(attacker);
+                return validateDamage.Error;
             }
-            bool waterSpell = attacker.Element == Element.Water;
-            return waterSpell || base.AttackedBy(attacker); 
+
+            return new Knight(damage);
         }
     }
 }

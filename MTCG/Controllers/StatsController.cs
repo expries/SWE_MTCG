@@ -1,16 +1,16 @@
 ﻿using MTCG.Repositories;
 using MTCG.Server;
 
-namespace MTCG.Controller
+namespace MTCG.Controllers
 {
     public class StatsController : ApiController
     {
-        private readonly IScoreRepository _scoreRepository;
+        private readonly IStatsRepository _statsRepository;
         private readonly IUserRepository _userRepository;
 
-        public StatsController(IScoreRepository scoreRepository, IUserRepository userRepository)
+        public StatsController(IStatsRepository statsRepository, IUserRepository userRepository)
         {
-            _scoreRepository = scoreRepository;
+            _statsRepository = statsRepository;
             _userRepository = userRepository;
         }
 
@@ -18,21 +18,21 @@ namespace MTCG.Controller
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return Unauthorized(new {Error = "Authorization is required."});
+                return Unauthorized("Authorization is required.");
             }
             
             var user = _userRepository.GetByToken(token);
 
             if (user is null)
             {
-                return Forbidden(new {Error = "No user with this token exists."});
+                return Unauthorized("Authentication with the provided token failed.");
             }
 
-            var stats = _scoreRepository.GetByUsername(user.Username);
+            var stats = _statsRepository.GetForUser(user);
 
             if (stats is null)
             {
-                return NotFound(new {Error = "Could not find stats for user \"" + user.Username + "\""});
+                return NotFound("Could not find stats for user \"" + user.Username + "\"");
             }
             
             return Ok(stats);
@@ -42,15 +42,15 @@ namespace MTCG.Controller
         {
             if (string.IsNullOrWhiteSpace(token))
             {
-                return Unauthorized(new {Error = "Authorization is required."});
+                return Unauthorized("Authorization is required.");
             }
 
             if (_userRepository.GetByToken(token) is null)
             {
-                return Forbidden(new {Error = "No user with this token exists."});
+                return Unauthorized("Authentication with the provided token failed.");
             }
 
-            var scoreboard = _scoreRepository.GetAll();
+            var scoreboard = _statsRepository.GetAll();
             return Ok(scoreboard);
         }
     }

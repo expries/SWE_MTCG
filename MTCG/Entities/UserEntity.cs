@@ -39,6 +39,6 @@ namespace MTCG.Entities
         public int Loses { get; set; }
         
         [Column(Name="elo")]
-        public double Elo { get; set; }
+        public int Elo { get; set; }
     }
 }

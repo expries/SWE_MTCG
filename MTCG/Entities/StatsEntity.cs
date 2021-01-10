@@ -6,7 +6,7 @@ namespace MTCG.Entities
     public class StatsEntity
     {
         [Column(Name="rank")]
-        public Int64 Rank { get; set; }
+        public long Rank { get; set; }
         
         [Column(Name="username")]
         public string Username { get; set; }

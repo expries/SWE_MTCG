@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace MTCG.Server
 {
     /// <summary>
@@ -29,6 +31,12 @@ namespace MTCG.Server
         public static int GetCode(this HttpStatus status)
         {
             return (int) status;
+        }
+
+        public static bool IsErrorCode(this HttpStatus status)
+        {
+            int code = status.GetCode();
+            return 400 <= code && code <= 599;
         }
         
         // get status phrase for a given HTTP status

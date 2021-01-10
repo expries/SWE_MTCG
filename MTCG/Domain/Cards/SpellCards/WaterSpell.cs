@@ -1,20 +1,24 @@
+using MTCG.Results;
+
 namespace MTCG.Domain.Cards.SpellCards
 {
     public class WaterSpell : SpellCard
     {
-        public WaterSpell(string name, double damage) : base(name, damage)
+        private WaterSpell(double damage) : base("WaterSpell", damage)
         {
             Element = Element.Water;
         }
         
-        protected override bool IsEffectiveAgainst(Card other)
+        public static Result<Card> Create(double damage)
         {
-            return other.Element == Element.Fire;
-        }
+            var validateDamage = ValidateDamage(damage);
+            
+            if (!validateDamage.Success)
+            {
+                return validateDamage.Error;
+            }
 
-        protected override bool IsIneffectiveAgainst(Card other)
-        {
-            return other.Element == Element.Normal;
+            return new WaterSpell(damage);
         }
     }
 }

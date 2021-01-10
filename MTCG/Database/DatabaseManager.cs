@@ -4,13 +4,12 @@ using System.Linq;
 using System.Reflection;
 using Npgsql;
 using Npgsql.Schema;
-using NpgsqlTypes;
 
 namespace MTCG.Database
 {
     public class DatabaseManager
     {
-        private NpgsqlConnection Connection { get; set; }
+        private NpgsqlConnection Connection { get; }
         
         private NpgsqlDataReader _reader;
 
@@ -28,7 +27,10 @@ namespace MTCG.Database
             Username = username;
             Password = password;
             Database = database;
-            Connection = null;
+            
+            string connString  = $"Host={Host};Username={Username};Password={Password};Database={Database}";
+            Connection = new NpgsqlConnection(connString);
+            Connection.Open();
         }
 
         public static void MapEnum<TEnum>(string name) where TEnum : struct, Enum
@@ -36,117 +38,88 @@ namespace MTCG.Database
             NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(name);
         }
 
-        public DatabaseManager GetNewInstance()
+        public int Execute(string sql)
         {
-            return new DatabaseManager(Host, Username, Password, Database);
+            var cmd = new NpgsqlCommand(sql);
+            return Execute(cmd);
+        }
+
+        public int Execute(string sql, object dataObject)
+        {
+            var cmd = GetCommand(sql, dataObject);
+            return Execute(cmd);
+        }
+        
+        public int Execute(NpgsqlCommand cmd)
+        {
+            cmd.Connection = Connection;
+            return cmd.ExecuteNonQuery();
         }
         
         public TEntity QueryFirstOrDefault<TEntity>(string query) 
             where TEntity : class, new()
         {
             var cmd = new NpgsqlCommand(query);
-            Query(cmd);
-            return GetNextRecord<TEntity>();
+            return QueryFirstOrDefault<TEntity>(cmd);
         }
-        
+
         public TEntity QueryFirstOrDefault<TEntity>(string query, object dataObject) 
             where TEntity : class, new()
         {
-            Query(query, dataObject);
-            return GetNextRecord<TEntity>();
+            var cmd = GetCommand(query, dataObject);
+            return QueryFirstOrDefault<TEntity>(cmd);
         }
-        
+
         public TEntity QueryFirstOrDefault<TEntity>(NpgsqlCommand cmd) 
             where TEntity : class, new()
         {
-            Query(cmd);
-            return GetRecord<TEntity>();
+            lock (Connection)
+            {
+                OpenReader(cmd);
+                var record = GetNextRecord<TEntity>();
+                CloseReader();
+                return record;
+            }
         }
         
         public List<TEntity> Query<TEntity>(string query, int limit = 100) 
             where TEntity : class, new()
         {
             var cmd = new NpgsqlCommand(query);
-            Query(cmd);
-            return GetRecords<TEntity>(limit);
+            return Query<TEntity>(cmd, limit);
         }
 
         public List<TEntity> Query<TEntity>(string query, object dataObject, int limit = 100) 
             where TEntity : class, new()
         {
-            Query(query, dataObject);
-            return GetRecords<TEntity>(limit);
+            var cmd = GetCommand(query, dataObject);
+            return Query<TEntity>(cmd, limit);
         }
         
         public List<TEntity> Query<TEntity>(NpgsqlCommand cmd, int limit = 100) 
             where TEntity : class, new()
         {
-            Query(cmd);
-            return GetRecords<TEntity>(limit);
-        }
-        
-        public void Query(string query)
-        {
-            var cmd = new NpgsqlCommand(query);
-            Query(cmd);
-        }
-        
-        public void Query(string query, object dataObject)
-        {
-            var cmd = BuildCommand(query, dataObject);
-            Query(cmd);
+            lock (Connection)
+            {
+                OpenReader(cmd);
+                var records = GetRecords<TEntity>(limit);
+                CloseReader();
+                return records;
+            }
         }
 
-        public void Query(NpgsqlCommand cmd)
+        private void OpenReader(NpgsqlCommand cmd)
         {
-            Reconnect();
             cmd.Connection = Connection;
             _reader = cmd.ExecuteReader();
         }
 
-        public int ExecuteNonQuery(string sql, object dataObject)
+        private void CloseReader()
         {
-            var cmd = BuildCommand(sql, dataObject);
-            return ExecuteNonQuery(cmd);
-        }
-        
-        public int ExecuteNonQuery(NpgsqlCommand cmd)
-        {
-            Reconnect();
-            cmd.Connection = Connection;
-            return cmd.ExecuteNonQuery();
+            _reader.Close();
         }
 
-        public TEntity GetNextRecord<TEntity>() where TEntity : class, new()
-        {
-            if (_reader is null)
-            {
-                throw new ArgumentException("You first have to execute a query to read records.");
-            }
-            
-            _reader.Read();
-            return GetRecord<TEntity>();
-        }
-
-        private Dictionary<string, object> GetRecord()
-        {
-            var columnSchema = _reader.GetColumnSchema();
-            var record = new Dictionary<string, object>();
-
-            if (!_reader.IsOnRow)
-            {
-                return record;
-            }
-            
-            foreach (var column in columnSchema)
-            {
-                AddColumn(column, record);
-            }
-
-            return record;
-        }
-
-        private static NpgsqlCommand BuildCommand(string sql, object dataObject)
+        private static NpgsqlCommand GetCommand(string sql, object dataObject)
         {
             var cmd = new NpgsqlCommand(sql);
             var readableProperties = dataObject.GetType()
@@ -165,15 +138,22 @@ namespace MTCG.Database
         private List<TEntity> GetRecords<TEntity>(int limit) where TEntity : class, new()
         {
             var records = new List<TEntity>();
-            TEntity record; int i = 0;
-            
-            while ((record = GetNextRecord<TEntity>()) != null && i < limit)
+            int count = 0;
+            TEntity record;
+
+            while ((record = GetNextRecord<TEntity>()) != null && count < limit)
             {
                 records.Add(record);
-                i++;
+                count++;
             }
 
             return records;
+        }
+        
+        private TEntity GetNextRecord<TEntity>() where TEntity : class, new()
+        {
+            _reader.Read();
+            return GetRecord<TEntity>();
         }
         
         private TEntity GetRecord<TEntity>() where TEntity : class, new()
@@ -213,7 +193,37 @@ namespace MTCG.Database
 
             return entity;
         }
+        
+        private Dictionary<string, object> GetRecord()
+        {
+            var columnSchema = _reader.GetColumnSchema();
+            var record = new Dictionary<string, object>();
 
+            if (!_reader.IsOnRow)
+            {
+                return record;
+            }
+            
+            foreach (var column in columnSchema)
+            {
+                AddColumnToRecord(column, record);
+            }
+
+            return record;
+        }
+
+        private void AddColumnToRecord(NpgsqlDbColumn column, IDictionary<string, object> record)
+        {
+            if (column.ColumnOrdinal is null)
+            {
+                return;
+            }
+                
+            int ordinal = (int) column.ColumnOrdinal;
+            var value = _reader.GetValue(ordinal);
+            record.Add(column.ColumnName, value);
+        }
+        
         private static object GetColumnValueByName(string name, IReadOnlyDictionary<string, object> record)
         {
             // find column in record with matching name (case-insensitive)
@@ -229,42 +239,6 @@ namespace MTCG.Database
 
             string columnName = columnNames.First();
             return record[columnName];
-        }
-        
-        private void AddColumn(NpgsqlDbColumn column, IDictionary<string, object> record)
-        {
-            if (column.ColumnOrdinal is null)
-            {
-                return;
-            }
-                
-            int ordinal = (int) column.ColumnOrdinal;
-            var value = _reader.GetValue(ordinal);
-            record.Add(column.ColumnName, value);
-        }
-        
-        private void Connect()
-        {
-            string connString = $"Host={Host};Username={Username};Password={Password};Database={Database}";
-            Connection = new NpgsqlConnection(connString);
-            Connection.Open();
-        }
-
-        private void Close()
-        {
-            Connection.Close();
-            Connection.Dispose();
-            Connection = null;
-        }
-
-        private void Reconnect()
-        {
-            if (Connection != null)
-            {
-                Close();
-            }
-            
-            Connect();
         }
     }
 }

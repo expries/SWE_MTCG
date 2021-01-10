@@ -8,10 +8,5 @@ namespace MTCG.Domain.Cards
         {
             Type = CardType.Monster;
         }
-
-        protected internal override bool AttackedBy(Card attacker)
-        {
-            return attacker.Damage > Damage;
-        }
     }
 }

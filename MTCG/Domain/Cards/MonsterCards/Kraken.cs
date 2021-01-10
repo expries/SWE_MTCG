@@ -1,18 +1,25 @@
+using MTCG.Results;
+
 namespace MTCG.Domain.Cards.MonsterCards
 {
     public class Kraken : MonsterCard
-
     {
-        public Kraken(string name, double damage) : base(name, damage)
+        private Kraken(double damage) : base("Kraken", damage)
         {
             Element = Element.Water;
             MonsterType = MonsterType.Kraken;
         }
-
-        protected internal override bool AttackedBy(Card attacker)
+        
+        public static Result<Card> Create(double damage)
         {
-            bool spellcard = attacker.Type == CardType.Spell;
-            return !spellcard && base.AttackedBy(attacker);
+            var validateDamage = ValidateDamage(damage);
+            
+            if (!validateDamage.Success)
+            {
+                return validateDamage.Error;
+            }
+
+            return new Kraken(damage);
         }
     }
 }

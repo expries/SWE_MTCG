@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 
 namespace MTCG.Results
 {
@@ -30,22 +31,14 @@ namespace MTCG.Results
         
         public bool HasError<TError>()
         {
-            return Error != null && typeof(TError) == Error.GetType();
-        }
+            if (Error is null)
+            {
+                return false;
+            }
 
-        public bool HasError<T1, T2>()
-        {
-            return HasError<T1>() || HasError<T2>();
-        }
-        
-        public bool HasError<T1, T2, T3>()
-        {
-            return HasError<T1, T2>() || HasError<T3>();
-        }
-        
-        public bool HasError<T1, T2, T3, T4>()
-        {
-            return HasError<T1, T2, T3>() || HasError<T4>();
+            bool isError = typeof(TError) == Error.GetType();
+            bool isChildOfError =  Error.GetType().IsSubclassOf(typeof(TError));
+            return isError || isChildOfError;
         }
 
         public static implicit operator Result(Error error)

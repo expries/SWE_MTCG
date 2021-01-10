@@ -64,10 +64,12 @@ namespace MTCG.Server
         /// </summary>
         /// <param name="status"></param>
         /// <param name="content"></param>
-        public ResponseContext(HttpStatus status, string content = null) : this()
+        /// <param name="contentType"></param>
+        public ResponseContext(HttpStatus status, string content = null, string contentType = MediaType.Plaintext) : this()
         {
             Status = status;
             Content = content;
+            ContentType = contentType;
         }
 
         /// <summary>
@@ -90,12 +92,12 @@ namespace MTCG.Server
                 Headers["Content-Type"] += "; charset=utf-8";
             }
 
-            var builder = new StringBuilder();
-            builder.Append(GenerateRequestLine());
-            builder.Append("\r\n");
-            builder.Append(HeaderToString());
-            builder.Append("\r\n");
-            builder.Append(ContentToString());
+            var builder = new StringBuilder()
+                .Append(GenerateRequestLine())
+                .Append("\r\n")
+                .Append(HeaderToString())
+                .Append("\r\n")
+                .Append(ContentToString());
 
             return builder.ToString();
         }

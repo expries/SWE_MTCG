@@ -1,65 +1,82 @@
-using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Reflection.Metadata;
 using MTCG.Domain.Cards;
 using MTCG.Domain.Cards.MonsterCards;
 using MTCG.Domain.Cards.SpellCards;
 using MTCG.Entities;
+using MTCG.Results;
+using MTCG.Results.Errors;
 
 namespace MTCG.Mappers
 {
     public static class CardEntityMapper
     {
-        public static List<Card> Map(IEnumerable<CardEntity> entities)
+        public static List<Card> MapIgnoreErrors(List<CardEntity> entities)
+        {
+            return entities.Select(MapIgnoreError).ToList();
+        }
+        
+        public static List<Result<Card>> Map(List<CardEntity> entities)
         {
             return entities.Select(Map).ToList();
         }
+
+        public static Card MapIgnoreError(CardEntity entity)
+        {
+            var mapping = Map(entity);
+            return mapping?.Value;
+        }
         
-        public static Card Map(CardEntity entity)
+        public static Result<Card> Map(CardEntity entity)
         {
             if (entity is null)
             {
                 return null;
             }
 
-            var card = CreateCard(entity);
+            var createCard = CreateCard(entity);
+
+            if (!createCard.Success)
+            {
+                return createCard.Error;
+            }
+            
+            var card = createCard.Value;
             card.Id = entity.Id;
             return card;
         }
 
-        private static Card CreateCard(CardEntity entity)
+        private static Result<Card> CreateCard(CardEntity entity)
         {
             return entity.Type is CardType.Spell 
                 ? CreateSpellCard(entity) 
                 : CreateMonsterCard(entity);
         }
         
-        private static Card CreateSpellCard(CardEntity entity)
+        private static Result<Card> CreateSpellCard(CardEntity entity)
         {
             return entity.Element switch
             {
-                Element.Normal => new NormalSpell(entity.Name, entity.Damage),
-                Element.Fire   => new FireSpell(entity.Name, entity.Damage),
-                Element.Water  => new WaterSpell(entity.Name, entity.Damage),
-                _ => throw new ArgumentException("Card has an unknown Element: " + entity.Element)
+                Element.Normal => RegularSpell.Create(entity.Damage),
+                Element.Fire   => FireSpell.Create(entity.Damage),
+                Element.Water  => WaterSpell.Create(entity.Damage),
+                _ => new UnknownElement("Card has an unknown Element: " + entity.Element)
             };
         }
 
-        private static Card CreateMonsterCard(CardEntity entity)
+        private static Result<Card> CreateMonsterCard(CardEntity entity)
         {
             return entity.MonsterType switch
             {
-                MonsterType.WaterGoblin => new WaterGoblin(entity.Name, entity.Damage),
-                MonsterType.Goblin      => new Goblin(entity.Name, entity.Damage),
-                MonsterType.Dragon      => new Dragon(entity.Name, entity.Damage),
-                MonsterType.Wizard      => new Wizard(entity.Name, entity.Damage),
-                MonsterType.Ork         => new Ork(entity.Name, entity.Damage),
-                MonsterType.Knight      => new Knight(entity.Name, entity.Damage),
-                MonsterType.Kraken      => new Kraken(entity.Name, entity.Damage),
-                MonsterType.FireElf     => new FireElf(entity.Name, entity.Damage),
-                _ => throw new ArgumentException("Card is an unknown monster type: " + entity.MonsterType)
+                MonsterType.WaterGoblin => WaterGoblin.Create(entity.Damage),
+                MonsterType.Goblin      => Goblin.Create(entity.Damage),
+                MonsterType.Dragon      => Dragon.Create(entity.Damage),
+                MonsterType.Wizard      => Wizard.Create(entity.Damage),
+                MonsterType.Ork         => Ork.Create(entity.Damage),
+                MonsterType.Knight      => Knight.Create(entity.Damage),
+                MonsterType.Kraken      => Kraken.Create(entity.Damage),
+                MonsterType.FireElf     => FireElf.Create(entity.Damage),
+                _ => new UnknownMonsterType("Card is an unknown monster type: " + entity.MonsterType)
             };
         }
     }

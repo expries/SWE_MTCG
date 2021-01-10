@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MTCG.Database;
 using MTCG.Domain.Cards;
 using MTCG.Entities;
@@ -19,56 +18,42 @@ namespace MTCG.Repositories
 
         public Card Get(Guid cardId)
         {
-            const string sql = "SELECT cardid, name, type, element, damage, fk_packageid, monstertype " + 
-                               "FROM card_info WHERE cardid = @cardId";
+            const string sql = "SELECT cardID, name, type, element, damage, fk_packageID, monsterType " + 
+                               "FROM card WHERE cardID = @CardId";
 
-            var entity = _db.QueryFirstOrDefault<CardEntity>(sql, new {cardId = cardId});
-            
-            if (entity is null)
-            {
-                return null;
-            }
-            
-            var card = CardEntityMapper.Map(entity);
+            var entity = _db.QueryFirstOrDefault<CardEntity>(sql, new {CardId = cardId});
+            var card = CardEntityMapper.MapIgnoreError(entity);
             return card;
         }
 
         public List<Card> GetAll()
         {
-            const string sql = "SELECT cardid, name, type, element, damage, fk_packageid, monstertype " + 
-                               "FROM card_info";
+            const string sql = "SELECT cardID, name, type, element, damage, fk_packageID, monsterType " + 
+                               "FROM card";
             
             var entities = _db.Query<CardEntity>(sql);
-            var cards = CardEntityMapper.Map(entities).ToList();
+            var cards = CardEntityMapper.MapIgnoreErrors(entities);
             return cards;
         }
         
         public Card Create(Card card, Guid packageId)
         {
-            const string sql = "INSERT INTO card (cardid, name, damage, element, type, fk_packageid) " +
-                               "VALUES (@cardID, @name, @damage, @element, @type, @fk_packageId)";
-
-            var cardData =
-                new {cardID = card.Id, name = card.Name, damage = card.Damage, element = card.Element,
-                    type = card.Type, fk_packageId = packageId};
+            const string sql = "INSERT INTO card (cardid, name, damage, element, type, monsterType, fk_packageid) " +
+                               "VALUES (@CardId, @Name, @Damage, @Element, @Type, @MonsterType, @Fk_packageId)";
             
-            _db.ExecuteNonQuery(sql, cardData);
+            dynamic monsterType = card is MonsterCard monsterCard ? monsterCard.MonsterType : DBNull.Value;
 
-            if (card.Type.Equals(CardType.Monster))
-            {
-                CreateMonsterCard(card);
-            }
+            _db.Execute(sql, new {
+                CardId = card.Id, 
+                Name = card.Name, 
+                Damage = card.Damage, 
+                Element = card.Element,
+                Type = card.Type, 
+                MonsterType = monsterType,
+                Fk_packageId = packageId
+            });
 
             return card;
-        }
-
-        private void CreateMonsterCard(Card card)
-        {
-            const string sql = "INSERT INTO monster_card (fk_cardid, monstertype) " +
-                               "VALUES (@cardID, @monsterType)";
-
-            var monster = (MonsterCard) card;
-            _db.ExecuteNonQuery(sql, new {cardId = card.Id, monsterType = monster.MonsterType});
         }
     }
 }

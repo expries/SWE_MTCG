@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using MTCG.Exceptions;
 using MTCG.Server.TcpWrapper;
+using Newtonsoft.Json;
 
 namespace MTCG.Server
 {
@@ -15,6 +16,7 @@ namespace MTCG.Server
     public class WebServer
     {
         private bool _running;
+        private Func<Exception, ResponseContext> _exceptionHandler;
         private readonly Dictionary<string, Dictionary<string, Func<RequestContext, ResponseContext>>> _routes;
 
         /// <summary>
@@ -24,6 +26,12 @@ namespace MTCG.Server
         {
             _routes = new Dictionary<string, Dictionary<string, Func<RequestContext, ResponseContext>>>();
             _running = false;
+            _exceptionHandler = null;
+        }
+
+        public void AddExceptionHandler(Func<Exception, ResponseContext> handler)
+        {
+            _exceptionHandler = handler;
         }
 
         /// <summary>
@@ -107,7 +115,7 @@ namespace MTCG.Server
             {
                 tcpClient.ReadRequest();
                 var request = tcpClient.GetRequest();
-                request.PrintProperties();
+                //request.PrintProperties();
                 
                 var response = RouteRequest(request);
                 response.Headers["Connection"] = "close";
@@ -122,12 +130,6 @@ namespace MTCG.Server
             {
                 Console.WriteLine("The client is not connected to a remote host.");
             }
-            /*
-            catch
-            {
-                Console.WriteLine("Failed to send response to client.");
-            }
-            */
         }
 
         /// <summary>
@@ -137,7 +139,7 @@ namespace MTCG.Server
         /// <returns></returns>
         private ResponseContext RouteRequest(RequestContext request)
         {
-            var response = new ResponseContext();
+            ResponseContext response;
 
             try
             {
@@ -145,20 +147,15 @@ namespace MTCG.Server
                 request.PathParam = GetParameters(request.Path, endpoint);
                 response = InvokeRoute(endpoint, request);
             }
-            catch (HttpException error)  // request format is invalid
+            catch (BadImageFormatException error)
             {
-                response.Status = error.Status;
-                response.Content = error.Message;
-                response.ContentType = MediaType.Plaintext;
+                if (_exceptionHandler is null)
+                {
+                    throw;
+                }
+                
+                return _exceptionHandler.Invoke(error);
             }
-            /*
-            catch
-            {
-                response.Status = HttpStatus.InternalServerError;
-                response.Content = "An error has occurred.";
-                response.ContentType = MediaType.Plaintext;
-            }
-            */
 
             return response;
         }
@@ -173,14 +170,12 @@ namespace MTCG.Server
         {
             if (!_routes.ContainsKey(endpoint))
             {
-                return new ResponseContext(
-                    HttpStatus.NotFound, "The requested endpoint does not exist.");
+                return new ResponseContext(HttpStatus.NotFound);
             }
             
             if (!_routes[endpoint].ContainsKey(request.Method))
             {
-                return new ResponseContext(
-                    HttpStatus.MethodNotAllowed, "Endpoint does not support requested method.");
+                return new ResponseContext(HttpStatus.MethodNotAllowed);
             }
             
             Console.WriteLine("Invoked route: " + endpoint + " (" + request.Method + ")");

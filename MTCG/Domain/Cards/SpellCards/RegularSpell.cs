@@ -1,13 +1,12 @@
 using MTCG.Results;
 
-namespace MTCG.Domain.Cards.MonsterCards
+namespace MTCG.Domain.Cards.SpellCards
 {
-    public class Ork : MonsterCard
+    public class RegularSpell : SpellCard
     {
-        private Ork(double damage) : base("Ork", damage)
+        private RegularSpell(double damage) : base("RegularSpell", damage)
         {
             Element = Element.Normal;
-            MonsterType = MonsterType.Ork;
         }
         
         public static Result<Card> Create(double damage)
@@ -19,7 +18,7 @@ namespace MTCG.Domain.Cards.MonsterCards
                 return validateDamage.Error;
             }
 
-            return new Ork(damage);
+            return new RegularSpell(damage);
         }
     }
 }

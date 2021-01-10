@@ -1,22 +1,25 @@
+using MTCG.Results;
+
 namespace MTCG.Domain.Cards.MonsterCards
 {
     public class FireElf : MonsterCard
     {
-        public FireElf(string name, double damage) : base(name, damage)
+        private FireElf(double damage) : base("FireElf", damage)
         {
             Element = Element.Fire;
             MonsterType = MonsterType.FireElf;
         }
-
-        protected internal override bool AttackedBy(Card attacker)
+        
+        public static Result<Card> Create(double damage)
         {
-            if (attacker.Type != CardType.Monster)
+            var validateDamage = ValidateDamage(damage);
+            
+            if (!validateDamage.Success)
             {
-                return base.AttackedBy(attacker);
+                return validateDamage.Error;
             }
-            var card = (MonsterCard) attacker;
-            bool isDragon = card.MonsterType == MonsterType.Dragon;
-            return !isDragon && base.AttackedBy(attacker);
+
+            return new FireElf(damage);
         }
     }
 }

@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading;
-using MTCG.Controller;
+using MTCG.Controllers;
 using MTCG.Database;
-using MTCG.Domain;
 using MTCG.Domain.Cards;
-using MTCG.Domain.Cards.MonsterCards;
-using MTCG.Domain.Cards.SpellCards;
+using MTCG.Exceptions;
 using MTCG.Mappers;
 using MTCG.Repositories;
 using MTCG.Requests;
+using MTCG.Results;
 using MTCG.Server;
+using Newtonsoft.Json;
 
 namespace MTCG
 {
@@ -28,62 +28,18 @@ namespace MTCG
             var userRepository = new UserRepository(db);
             var cardRepository = new CardRepository(db);
             var packageRepository = new PackageRepository(db);
-            var scoreRepository = new ScoreRepository(db);
+            var scoreRepository = new StatsRepository(db);
             var tradeRepository = new TradeRepository(db, userRepository, cardRepository);
-            var battleRepository = new BattleRepository();
-            
+            var gameRepository = new GameRepository();
+            var messageRepository = new MessageRepository(db, userRepository);
+
             // create controllers that use repositories
-            var cardController = new CardController(cardRepository);
-            var userController = new UserController(userRepository, packageRepository, cardRepository);
+            var userController = new UserController(userRepository, packageRepository, cardRepository, tradeRepository);
             var packageController = new PackageController(packageRepository, cardRepository, userRepository);
             var statsController = new StatsController(scoreRepository, userRepository);
             var tradeController = new TradeController(tradeRepository, userRepository, cardRepository);
-
-            var playerA = User.Create("playerA", "A").Value;
-            var playerB = User.Create("playerB", "B").Value;
-
-            var cardA1 = new FireSpell("FireSpell", 100);
-            var cardA2 = new WaterSpell("WaterSpell", 120);
-            var cardA3 = new Goblin("Goblin", 120);
-            var cardA4 = new NormalSpell("NormalSpell", 120);
-            var cardA5 = new Dragon("Dragon", 120);
-            
-            var cardB1 = new FireSpell("FireSpell", 100);
-            var cardB2 = new WaterSpell("WaterSpell", 120);
-            var cardB3 = new FireElf("FireElf", 120);
-            var cardB4 = new Wizard("Wizard", 120);
-            var cardB5 = new Knight("Knight", 120);
-
-            playerA.AddToCollection(cardA1);
-            playerA.AddToCollection(cardA2);
-            playerA.AddToCollection(cardA3);
-            playerA.AddToCollection(cardA4);
-            playerA.AddToCollection(cardA5);
-
-            playerA.AddToDeck(cardA1);
-            playerA.AddToDeck(cardA2);
-            playerA.AddToDeck(cardA3);
-            playerA.AddToDeck(cardA4);
-            playerA.AddToDeck(cardA5);
-            
-            playerB.AddToCollection(cardB1);
-            playerB.AddToCollection(cardB2);
-            playerB.AddToCollection(cardB3);
-            playerB.AddToCollection(cardB4);
-            playerB.AddToCollection(cardB5);
-            
-            playerB.AddToDeck(cardB1);
-            playerB.AddToDeck(cardB2);
-            playerB.AddToDeck(cardB3);
-            playerB.AddToDeck(cardB4);
-            playerB.AddToDeck(cardB5);
-
-            var x = Battle.Create(playerA).Value;
-            x.RegisterAsSecondPlayer(playerB);
-            x.Play();
-            Console.WriteLine(x.MetaInfo.Winner);
-            Console.WriteLine(x.MetaInfo.ToString());
-            return;
+            var gameController = new GameController(gameRepository, userRepository);
+            var messageController = new MessageController(messageRepository, userRepository);
 
             // create server
             var server = new WebServer();
@@ -102,11 +58,12 @@ namespace MTCG
             
             server.RegisterRoute("GET", "/users/{username}", context =>
             {
+                string token = context.Authorization;
                 string username = context.PathParam["username"];
-                return userController.GetUser(username);
+                return userController.GetUser(token, username);
             });
             
-            server.RegisterRoute("PUT", "/users/{username]", context =>
+            server.RegisterRoute("PUT", "/users/{username}", context =>
             {
                 string username = context.PathParam["username"];
                 string token = context.Authorization;
@@ -197,35 +154,95 @@ namespace MTCG
                 return tradeController.CreateTrade(token, request);
             });
             
-            server.RegisterRoute("POST", "/tradings/{trade}", context =>
+            server.RegisterRoute("POST", "/tradings/{tradeId}", context =>
             {
                 string token = context.Authorization;
-                var tradeId = WebMapper.MapToGuid(context.PathParam["trade"]);
-                var cardId = WebMapper.MapToGuid(context.Content);
+                var tradeId = WebMapper.MapToGuid(context.PathParam["tradeId"]);
+                var cardId = WebMapper.MapJsonTo<Guid>(context.Content);
                 return tradeController.CommitTrade(token, tradeId, cardId);
+            });
+            
+            server.RegisterRoute("DELETE", "/tradings/{tradeId}", context =>
+            {
+                string token = context.Authorization;
+                var tradeId = WebMapper.MapToGuid(context.PathParam["tradeId"]);
+                return tradeController.DeleteTrade(token, tradeId);
+            });
+            
+            // BATTLES
+            server.RegisterRoute("POST", "/battles", context =>
+            {
+                string token = context.Authorization;
+                return gameController.PlayGame(token);
+            });
+            
+            // CHATTING
+            server.RegisterRoute("POST", "/messages", context =>
+            {
+                string token = context.Authorization;
+                var request = WebMapper.MapJsonTo<MessageCreationRequest>(context.Content);
+                return messageController.SendMessage(token, request);
+            });
+            
+            server.RegisterRoute("GET", "/messages/{messageId}", context =>
+            {
+                string token = context.Authorization;
+                var messageId = WebMapper.MapToGuid(context.PathParam["messageId"]);
+                return messageController.GetMessage(token, messageId);
+            });
+            
+            server.RegisterRoute("DELETE", "/messages/{messageId}", context =>
+            {
+                string token = context.Authorization;
+                var messageId = WebMapper.MapToGuid(context.PathParam["messageId"]);
+                return messageController.DeleteMessage(token, messageId);
+            });
+            
+            server.RegisterRoute("GET", "/chat", context =>
+            {
+                string token = context.Authorization;
+                return messageController.GetInbox(token);
+            });
+            
+            server.RegisterRoute("GET", "/chat/{username}", context =>
+            {
+                string token = context.Authorization;
+                string chatPartner = context.PathParam["username"];
+                return messageController.ReadConversation(token, chatPartner);
             });
 
             // EXTRA ENDPOINTS FOR DEVELOPMENT
-            server.RegisterRoute("GET", "/cardsAll", _ =>
-            {
-                return cardController.GetAll();
-            });
-            
-            server.RegisterRoute("GET", "/cardsAll/{cardId}", context =>
-            {
-                string cardId = context.PathParam["cardId"];
-                return cardController.Get(WebMapper.MapToGuid(cardId));
-            });
-            
-            server.RegisterRoute("GET", "/wait", context =>
+            server.RegisterRoute("GET", "/wait", _ =>
             {
                 Thread.Sleep(20000);
                 return new ResponseContext(HttpStatus.Ok, "Waited!");
             });
+            
+            server.AddExceptionHandler(exception =>
+            {
+                Error error;
+                HttpStatus status;
+                
+                if (exception is HttpException httpException)
+                {
+                    error = new Error(httpException.Message);
+                    status = httpException.Status;
+                }
+                else
+                {
+                    Console.WriteLine(exception.Message);
+                    error = new Error("An error has occurred.");
+                    status = HttpStatus.InternalServerError;
+                }
+                
+                throw exception;
+                string json = JsonConvert.SerializeObject(error);
+                return new ResponseContext(status, json, MediaType.Json);
+            });
 
             // start accepting clients
             server.Start();
-            server.Listen("127.0.0.1", 48501);
+            server.Listen("127.0.0.1", 10001);
         }
     }
 }

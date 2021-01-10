@@ -1,20 +1,24 @@
+using MTCG.Results;
+
 namespace MTCG.Domain.Cards.SpellCards
 {
     public class FireSpell : SpellCard
     {
-        public FireSpell(string name, double damage) : base(name, damage)
+        private FireSpell(double damage) : base("FireSpell", damage)
         {
             Element = Element.Fire;
         }
-        
-        protected override bool IsEffectiveAgainst(Card other)
-        {
-            return other.Element == Element.Normal;
-        }
 
-        protected override bool IsIneffectiveAgainst(Card other)
+        public static Result<Card> Create(double damage)
         {
-            return other.Element == Element.Water;
+            var validateDamage = ValidateDamage(damage);
+            
+            if (!validateDamage.Success)
+            {
+                return validateDamage.Error;
+            }
+
+            return new FireSpell(damage);
         }
     }
 }

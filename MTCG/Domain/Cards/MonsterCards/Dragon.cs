@@ -1,22 +1,26 @@
+using MTCG.Domain.Cards.SpellCards;
+using MTCG.Results;
+
 namespace MTCG.Domain.Cards.MonsterCards
 {
     public class Dragon : MonsterCard
     {
-        public Dragon(string name, double damage) : base(name, damage)
+        private Dragon(double damage) : base("Dragon", damage)
         {
             Element = Element.Fire;
             MonsterType = MonsterType.Dragon;
         }
         
-        protected internal override bool AttackedBy(Card attacker)
+        public static Result<Card> Create(double damage)
         {
-            if (attacker.Type != CardType.Monster)
+            var validateDamage = ValidateDamage(damage);
+            
+            if (!validateDamage.Success)
             {
-                return base.AttackedBy(attacker);
+                return validateDamage.Error;
             }
-            var card = (MonsterCard) attacker;
-            bool isGoblin = card.MonsterType == MonsterType.Goblin;
-            return !isGoblin && base.AttackedBy(attacker);
+
+            return new Dragon(damage);
         }
     }
 }

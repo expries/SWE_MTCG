@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Channels;
 using MTCG.Exceptions;
+using Newtonsoft.Json;
 
 namespace MTCG.Server
 {
@@ -156,7 +157,7 @@ namespace MTCG.Server
         /// <param name="c"></param>
         private void ReadHeader(char c)
         {
-            if (!LineCompleted(c))
+            if (!LineComplete(c))
             {
                 return;
             }
@@ -243,7 +244,7 @@ namespace MTCG.Server
         /// </summary>
         /// <param name="c"></param>
         /// <returns></returns>
-        private bool LineCompleted(char c)
+        private bool LineComplete(char c)
         {
             switch (c)
             {
@@ -297,7 +298,7 @@ namespace MTCG.Server
 
             if (parts.Length < 2)
             {
-                throw new BadRequestException("Invalid Authorization header attribute.");
+                throw new BadRequestException("Authorization header attribute is invalid.");
             }
             
             return parts[1];

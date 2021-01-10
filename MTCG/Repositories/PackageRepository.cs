@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using MTCG.Database;
 using MTCG.Domain;
 using MTCG.Domain.Cards;
@@ -19,59 +20,57 @@ namespace MTCG.Repositories
 
         public void Delete(Package package)
         {
-            const string sql = "DELETE FROM package WHERE packageid = @id";
-            _db.ExecuteNonQuery(sql, new {id = package.Id});
+            const string sql = "DELETE FROM package WHERE packageID = @PackageId";
+            _db.Execute(sql, new {PackageId = package.Id});
         }
 
         public Package Get(Guid packageId)
         {
-            const string sql = "SELECT packageid, price FROM package " +
-                               "WHERE packageid = @id";
+            const string sql = "SELECT packageID, Price FROM package " +
+                               "WHERE packageID = @PackageId";
             
-            var entity = _db.QueryFirstOrDefault<PackageEntity>(sql, new {id = packageId});
-
-            if (entity is null)
-            {
-                return null;
-            }
-            
-            var package = PackageEntityMapper.Map(entity);
-            var cards = GetCards(package.Id);
-            cards.ForEach(card => package.AddCard(card));
+            var entity = _db.QueryFirstOrDefault<PackageEntity>(sql, new {PackageId = packageId});
+            var package = MapEntity(entity);
             return package;
         }
 
         public List<Package> GetAll()
         {
-            const string sql = "SELECT packageid, price FROM package";
+            const string sql = "SELECT packageID, price FROM package";
             var entities = _db.Query<PackageEntity>(sql);
-            var packages = PackageEntityMapper.Map(entities);
-
-            foreach (var package in packages)
-            {
-                var cards = GetCards(package.Id);
-                cards.ForEach(card => package.AddCard(card));
-            }
-            
+            var packages = entities.Select(MapEntity).ToList();
             return packages;
         }
         
         public Package Create(Package package)
         {
-            const string sql = "INSERT INTO package (packageid, price) " +
-                               "VALUES (@packageId, @price)";
+            const string sql = "INSERT INTO package (packageID, price) " +
+                               "VALUES (@PackageId, @Price)";
 
-            _db.ExecuteNonQuery(sql, new {packageId = package.Id, price = package.Price});
+            _db.Execute(sql, new {PackageId = package.Id, Price = package.Price});
+            return package;
+        }
+        
+        private Package MapEntity(PackageEntity entity)
+        {
+            if (entity is null)
+            {
+                return null;
+            }
+            
+            var package = Package.Create(entity.Id).Value;
+            var cards = GetCards(package.Id);
+            cards.ForEach(card => package.AddCard(card));
             return package;
         }
 
         private List<Card> GetCards(Guid packageId)
         {
-            const string sql = "SELECT cardid, name, type, element, damage, fk_packageid, monstertype " + 
-                               "FROM card_info WHERE fk_packageId = @id";
+            const string sql = "SELECT cardID, name, type, element, damage, fk_packageID, monsterType " + 
+                               "FROM card WHERE fk_packageId = @PackageId";
             
-            var entities = _db.Query<CardEntity>(sql, new {id = packageId});
-            var cards = CardEntityMapper.Map(entities);
+            var entities = _db.Query<CardEntity>(sql, new {PackageId = packageId});
+            var cards = CardEntityMapper.MapIgnoreErrors(entities);
             return cards;
         }
     }

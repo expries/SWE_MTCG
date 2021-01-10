@@ -1,22 +1,25 @@
+using MTCG.Results;
+
 namespace MTCG.Domain.Cards.MonsterCards
 {
     public class Wizard : MonsterCard
     {
-        public Wizard(string name, double damage) : base(name, damage)
+        private Wizard(double damage) : base("Wizard", damage)
         {
             Element = Element.Normal;
             MonsterType = MonsterType.Wizard;
         }
-
-        protected internal override bool AttackedBy(Card attacker)
+        
+        public static Result<Card> Create(double damage)
         {
-            if (attacker.Type != CardType.Monster)
+            var validateDamage = ValidateDamage(damage);
+            
+            if (!validateDamage.Success)
             {
-                return base.AttackedBy(attacker);
+                return validateDamage.Error;
             }
-            var card = (MonsterCard) attacker;
-            bool ork = card.MonsterType == MonsterType.Ork;
-            return !ork && base.AttackedBy(attacker);
+
+            return new Wizard(damage);
         }
     }
 }

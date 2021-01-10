@@ -1,8 +1,9 @@
+using System;
 using MTCG.Server;
 
 namespace MTCG.Exceptions
 {
-    public class HttpException : System.Exception
+    public class HttpException : Exception
     {
         public HttpStatus Status { get; }
 

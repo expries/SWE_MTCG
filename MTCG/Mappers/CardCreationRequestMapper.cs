@@ -1,48 +1,56 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using MTCG.Domain.Cards;
 using MTCG.Domain.Cards.MonsterCards;
 using MTCG.Domain.Cards.SpellCards;
 using MTCG.Requests;
+using MTCG.Results;
+using MTCG.Results.Errors;
 
 namespace MTCG.Mappers
 {
     public static class CardCreationRequestMapper
     {
-        public static List<Card> Map(IEnumerable<CardCreationRequest> entities)
+        public static List<Result<Card>> Map(List<CardCreationRequest> requests)
         {
-            return entities.Select(Map).ToList();
+            return requests.Select(Map).ToList();
         }
         
-        public static Card Map(CardCreationRequest obj)
+        public static Result<Card> Map(CardCreationRequest request)
         {
-            if (obj is null)
+            if (request is null)
             {
                 return null;
             }
             
-            var card = CreateCard(obj);
-            card.Id = obj.Id;
+            var createCard = CreateCard(request);
+
+            if (!createCard.Success)
+            {
+                return createCard.Error;
+            }
+
+            var card = createCard.Value;
+            card.Id = request.Id;
             return card;
         }
 
-        private static Card CreateCard(CardCreationRequest obj)
+        private static Result<Card> CreateCard(CardCreationRequest obj)
         {
             return obj.Name switch
             {
-                "NormalSpell" => new NormalSpell(obj.Name, obj.Damage),
-                "FireSpell"   => new FireSpell(obj.Name, obj.Damage),
-                "WaterSpell"  => new WaterSpell(obj.Name, obj.Damage),
-                "WaterGoblin" => new WaterGoblin(obj.Name, obj.Damage),
-                "Goblin"      => new Goblin(obj.Name, obj.Damage),
-                "Dragon"      => new Dragon(obj.Name, obj.Damage),
-                "Wizard"      => new Wizard(obj.Name, obj.Damage),
-                "Ork"         => new Ork(obj.Name, obj.Damage),
-                "Knight"      => new Knight(obj.Name, obj.Damage),
-                "Kraken"      => new Kraken(obj.Name, obj.Damage),
-                "FireElf"     => new FireElf(obj.Name, obj.Damage),
-                _ => throw new ArgumentException("Card is of an unknown type: " + obj.Name)
+                "RegularSpell" => RegularSpell.Create(obj.Damage),
+                "FireSpell"    => FireSpell.Create(obj.Damage),
+                "WaterSpell"   => WaterSpell.Create(obj.Damage),
+                "WaterGoblin"  => WaterGoblin.Create(obj.Damage),
+                "Goblin"       => Goblin.Create(obj.Damage),
+                "Dragon"       => Dragon.Create(obj.Damage),
+                "Wizard"       => Wizard.Create(obj.Damage),
+                "Ork"          => Ork.Create(obj.Damage),
+                "Knight"       => Knight.Create(obj.Damage),
+                "Kraken"       => Kraken.Create(obj.Damage),
+                "FireElf"      => FireElf.Create(obj.Damage),
+                _ => new UnknownCardName("Card is of an unknown type: " + obj.Name)
             };
         }
     }

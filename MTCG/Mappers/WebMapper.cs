@@ -14,7 +14,7 @@ namespace MTCG.Mappers
             }
             catch
             {
-                throw new BadRequestException();
+                throw new BadRequestException("Request does not fulfill expected format.");
             }
         }
 
@@ -26,11 +26,11 @@ namespace MTCG.Mappers
             }
             catch (ArgumentNullException)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("Missing GUID.");
             }
             catch (FormatException)
             {
-                throw new BadRequestException();
+                throw new BadRequestException("Parameter \"" + guid + "\"is not a valid GUID.");
             }
         }
     }

@@ -1,38 +1,49 @@
-﻿using System.Security.Cryptography.X509Certificates;
-using System.Text;
+﻿using System.Text;
+using MTCG.Domain.Cards;
 
-namespace MTCG.Domain.Cards
+namespace MTCG.Domain
 {
-    public class BattleData
+    public class GameLog
     {
         public User Winner { get; private set; }
-        public Card WinningCard { get; private set; }
-        private StringBuilder LogBuilder { get; }
         
-        public BattleData()
+        public Card WinningCard { get; private set; }
+        
+        public int Rounds { get; private set; }
+        
+        private StringBuilder LogBuilder { get; }
+
+        public GameLog()
         {
             Winner = null;
+            WinningCard = null;
+            Rounds = 0;
             LogBuilder = new StringBuilder();
         }
 
         public override string ToString() => LogBuilder.ToString();
 
-        public BattleData Log(string message)
+        public GameLog Append(string message)
         {
             LogBuilder.Append(message);
             return this;
         }
 
-        public BattleData AddWinner(User winner)
+        public GameLog AddWinner(User winner)
         {
             Winner = winner;
             return this;
         }
-
-        public BattleData AddWinner(Card winner)
+        
+        public GameLog AddWinner(Card winner)
         {
             WinningCard = winner;
             return this;
+        }
+
+        public void IncrementRounds()
+        {
+            Rounds++;
         }
     }
 }

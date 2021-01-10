@@ -1,4 +1,6 @@
 using System;
+using MTCG.Results;
+using MTCG.Results.Errors;
 
 namespace MTCG.Domain.Cards
 {
@@ -8,7 +10,7 @@ namespace MTCG.Domain.Cards
         
         public string Name { get; }
         
-        public double Damage { get; protected set; }
+        public double Damage { get; }
         
         public Element Element { get; protected set; }
 
@@ -16,27 +18,21 @@ namespace MTCG.Domain.Cards
 
         private Card(Guid id, string name, double damage)
         {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                throw new ArgumentException("Name may not be null or empty.");
-            }
-            if (damage < 0)
-            {
-                throw new ArgumentException("Damage may not be less than zero.");
-            }
-
             Id = id;
             Name = name;
             Damage = damage;
         }
-
+        
         protected Card(string name, double damage) : this(Guid.NewGuid(), name, damage) {}
 
-        public virtual bool Attack(Card defender)
+        protected static Result ValidateDamage(double damage)
         {
-            return defender.AttackedBy(this);
+            if (damage < 0)
+            {
+                return new NegativeCardDamage("Card damage may not be negative.");
+            }
+            
+            return Result.Ok();
         }
-        
-        protected internal abstract bool AttackedBy(Card attacker);
     }
 }

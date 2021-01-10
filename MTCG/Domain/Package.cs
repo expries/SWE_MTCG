@@ -16,21 +16,10 @@ namespace MTCG.Domain
         
         public List<Card> Cards { get; }
 
-        private Package()
-        {
-            Cards = new List<Card>();
-            Id = Guid.NewGuid();
-        }
-        
         private Package(Guid id)
         {
             Cards = new List<Card>();
             Id = id;
-        }
-        
-        public static Package Create()
-        {
-            return new Package();
         }
 
         public static Result<Package> Create(Guid id)
@@ -58,6 +47,11 @@ namespace MTCG.Domain
                 return creation.Error;
             }
 
+            if (cards.Count != 5)
+            {
+                return new PackageNotComplete("A package has to consist of exactly 5 cards.");
+            }
+
             var package = creation.Value;
 
             foreach (var card in cards)
@@ -75,7 +69,7 @@ namespace MTCG.Domain
 
         public Result AddCard(Card card)
         {
-            if (Cards.Select(x => x.Id).Contains(card.Id))
+            if (Cards.Any(x => x.Id == card.Id))
             {
                 return new CardAlreadyInPackage("Package already contains a card with ID " + card.Id + ".");
             }
