@@ -1,3 +1,5 @@
+using MTCG.Results;
+
 namespace MTCG.ActionResult.Errors
 {
     public class AllPackagesAcquired : Error

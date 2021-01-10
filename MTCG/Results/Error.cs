@@ -1,12 +1,11 @@
-using System.Linq;
 using Newtonsoft.Json;
 
-namespace MTCG.ActionResult
+namespace MTCG.Results
 {
     public class Error
     {
         [JsonProperty("Error")]
-        public string Message { get; }
+        public string Message { get; protected set; }
 
         public Error(string message)
         {

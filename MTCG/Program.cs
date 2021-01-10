@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using MTCG.Controller;
+using System.Threading;
+using MTCG.Controllers;
 using MTCG.Database;
-using MTCG.Database.Entity;
-using MTCG.Mapper;
-using MTCG.Repository;
-using MTCG.Request;
-using MTCG.Resource.Cards;
+using MTCG.Domain.Cards;
+using MTCG.Exceptions;
+using MTCG.Mappers;
+using MTCG.Repositories;
+using MTCG.Requests;
+using MTCG.Results;
 using MTCG.Server;
-using MTCG.Service;
-using Npgsql;
+using Newtonsoft.Json;
 
 namespace MTCG
 {
@@ -20,93 +21,225 @@ namespace MTCG
             DatabaseManager.MapEnum<Element>("element_type");
             DatabaseManager.MapEnum<CardType>("card_type");
             DatabaseManager.MapEnum<MonsterType>("monster_type");
-            
+
             var db = new DatabaseManager("localhost", "postgres", "postgres", "postgres");
 
             // create repositories
             var userRepository = new UserRepository(db);
-            var cardRepository = new CardRepository();
-            var packageRepository = new PackageRepository();
-            
-            // create services
-            var cardService = new CardService();
-            var packageService = new PackageService();
-            var userService = new UserService();
-            
-            // create controllers that utilise created repositories
-            var cardController = new CardController(cardRepository);
-            var userController = new UserController(UserService);
-            var packageController = new PackageController(cardRepository, packageRepository);
+            var cardRepository = new CardRepository(db);
+            var packageRepository = new PackageRepository(db);
+            var scoreRepository = new StatsRepository(db);
+            var tradeRepository = new TradeRepository(db, userRepository, cardRepository);
+            var gameRepository = new GameRepository();
+            var messageRepository = new MessageRepository(db, userRepository);
+
+            // create controllers that use repositories
+            var userController = new UserController(userRepository, packageRepository, cardRepository, tradeRepository);
+            var packageController = new PackageController(packageRepository, cardRepository, userRepository);
+            var statsController = new StatsController(scoreRepository, userRepository);
+            var tradeController = new TradeController(tradeRepository, userRepository, cardRepository);
+            var gameController = new GameController(gameRepository, userRepository);
+            var messageController = new MessageController(messageRepository, userRepository);
 
             // create server
             var server = new WebServer();
 
             // USERS
-            server.RegisterRoute("GET", "/users", context =>
+            server.RegisterRoute("GET", "/users", _ =>
             {
-                return userController.GetAll();
+                return userController.GetAllUsers();
             });
             
             server.RegisterRoute("POST", "/users", context =>
             {
-                return userController.Register(WebMapper.MapJsonTo<RegistrationRequest>(context.Content));
+                var request = WebMapper.MapJsonTo<RegistrationRequest>(context.Content);
+                return userController.RegisterUser(request);
             });
             
             server.RegisterRoute("GET", "/users/{username}", context =>
             {
-                return userController.Get(context.PathParam["username"]);
+                string token = context.Authorization;
+                string username = context.PathParam["username"];
+                return userController.GetUser(token, username);
+            });
+            
+            server.RegisterRoute("PUT", "/users/{username}", context =>
+            {
+                string username = context.PathParam["username"];
+                string token = context.Authorization;
+                var userRequest = WebMapper.MapJsonTo<UserUpdateRequest>(context.Content);
+                return userController.UpdateUser(token, username, userRequest);
             });
 
             // SESSIONS
             server.RegisterRoute("POST", "/sessions", context =>
             {
-                return userController.Login(WebMapper.MapJsonTo<LoginRequest>(context.Content));
+                var request = WebMapper.MapJsonTo<LoginRequest>(context.Content);
+                return userController.Login(request);
             });
             
             // CARDS
             server.RegisterRoute("GET", "/cards", context =>
             {
-                return userController.GetCards(context.Headers["Authorization"]);
+                string token = context.Authorization;
+                return userController.GetStack(token);
             });
-            
-            server.RegisterRoute("GET", "/cardsAll", context =>
-            {
-                return cardController.GetAll();
-            });
-            
-            server.RegisterRoute("GET", "/cardsAll/{cardId}", context =>
-            {
-                string cardId = context.PathParam["cardId"];
-                return cardController.Get(WebMapper.MapToGuid(cardId));
-            });
-            
+
             // PACKAGES
             server.RegisterRoute("POST", "/packages", context =>
             {
-                var cardRequests = WebMapper.MapJsonTo<List<CardCreationRequest>>(context.Content);
-                return packageController.Create(cardRequests);
+                var requests = WebMapper.MapJsonTo<List<CardCreationRequest>>(context.Content);
+                string token = context.Authorization;
+                return packageController.Create(token, requests);
             });
             
-            server.RegisterRoute("GET", "/packages", context =>
+            server.RegisterRoute("GET", "/packages", _ =>
             {
                 return packageController.GetAll();
             });
             
             server.RegisterRoute("GET", "/packages/{packageId}", context =>
             {
-                string packageId = context.PathParam["packageId"];
-                return packageController.Get(WebMapper.MapToGuid(packageId));
+                string id = context.PathParam["packageId"];
+                var packageId = WebMapper.MapToGuid(id);
+                return packageController.Get(packageId);
             });
             
             // TRANSACTIONS
             server.RegisterRoute("POST", "/transactions/packages", context =>
             {
-                return userController.AcquirePackage(context.Headers["Authorization"]);
+                string token = context.Authorization;
+                return userController.AcquirePackage(token);
+            });
+            
+            // DECK
+            server.RegisterRoute("GET", "/deck", context =>
+            {
+                string token = context.Authorization;
+                return userController.GetDeck(token);
+            });
+            
+            server.RegisterRoute("GET", "/deck?format=plain", context =>
+            {
+                string token = context.Authorization;
+                return userController.GetDeckPlaintext(token);
+            });
+            
+            server.RegisterRoute("PUT", "/deck", context =>
+            {
+                string token = context.Authorization;
+                var cardIds = WebMapper.MapJsonTo<List<Guid>>(context.Content);
+                return userController.UpdateDeck(token, cardIds);
+            });
+            
+            // STATS
+            server.RegisterRoute("GET", "/stats", context =>
+            {
+                string token = context.Authorization;
+                return statsController.GetStats(token);
+            });
+            
+            // SCOREBOARD
+            server.RegisterRoute("GET", "/score", context =>
+            {
+                string token = context.Authorization;
+                return statsController.GetScoreboard(token);
+            });
+            
+            // TRADES
+            server.RegisterRoute("GET", "/tradings", context =>
+            {
+                string token = context.Authorization;
+                return tradeController.GetTrades(token);
+            });
+            
+            server.RegisterRoute("POST", "/tradings", context =>
+            {
+                string token = context.Authorization;
+                var request = WebMapper.MapJsonTo<TradeCreationRequest>(context.Content);
+                return tradeController.CreateTrade(token, request);
+            });
+            
+            server.RegisterRoute("POST", "/tradings/{tradeId}", context =>
+            {
+                string token = context.Authorization;
+                var tradeId = WebMapper.MapToGuid(context.PathParam["tradeId"]);
+                var cardId = WebMapper.MapJsonTo<Guid>(context.Content);
+                return tradeController.CommitTrade(token, tradeId, cardId);
+            });
+            
+            server.RegisterRoute("DELETE", "/tradings/{tradeId}", context =>
+            {
+                string token = context.Authorization;
+                var tradeId = WebMapper.MapToGuid(context.PathParam["tradeId"]);
+                return tradeController.DeleteTrade(token, tradeId);
+            });
+            
+            // BATTLES
+            server.RegisterRoute("POST", "/battles", context =>
+            {
+                string token = context.Authorization;
+                return gameController.PlayGame(token);
+            });
+            
+            // CHATTING
+            server.RegisterRoute("POST", "/messages", context =>
+            {
+                string token = context.Authorization;
+                var request = WebMapper.MapJsonTo<MessageCreationRequest>(context.Content);
+                return messageController.SendMessage(token, request);
+            });
+            
+            server.RegisterRoute("GET", "/messages/{messageId}", context =>
+            {
+                string token = context.Authorization;
+                var messageId = WebMapper.MapToGuid(context.PathParam["messageId"]);
+                return messageController.GetMessage(token, messageId);
+            });
+            
+            server.RegisterRoute("DELETE", "/messages/{messageId}", context =>
+            {
+                string token = context.Authorization;
+                var messageId = WebMapper.MapToGuid(context.PathParam["messageId"]);
+                return messageController.DeleteMessage(token, messageId);
+            });
+            
+            server.RegisterRoute("GET", "/inbox", context =>
+            {
+                string token = context.Authorization;
+                return messageController.GetInbox(token);
+            });
+            
+            server.RegisterRoute("GET", "/chat/{username}", context =>
+            {
+                string token = context.Authorization;
+                string chatPartner = context.PathParam["username"];
+                return messageController.ReadConversation(token, chatPartner);
+            });
+
+            server.AddExceptionHandler(exception =>
+            {
+                Error error;
+                HttpStatus status;
+                
+                if (exception is HttpException httpException)
+                {
+                    error = new Error(httpException.Message);
+                    status = httpException.Status;
+                }
+                else
+                {
+                    error = new Error("An error has occurred.");
+                    status = HttpStatus.InternalServerError;
+                }
+                
+                string json = JsonConvert.SerializeObject(error);
+                return new ResponseContext(status, json, MediaType.Json);
             });
 
             // start accepting clients
             server.Start();
-            server.Listen("127.0.0.1", 48501);
+            server.Listen("127.0.0.1", 10001);
         }
     }
 }

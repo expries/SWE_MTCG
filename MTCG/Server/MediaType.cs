@@ -1,6 +1,8 @@
 namespace MTCG.Server
 {
-    // media types for response content-type
+    /// <summary>
+    /// media types for response content-type
+    /// </summary>
     public static class MediaType
     {
         public const string Xml       = "text/xml";

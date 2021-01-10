@@ -1,14 +1,9 @@
-namespace MTCG.ActionResult.Errors
+namespace MTCG.Results.Errors
 {
     public class NotEnoughCoins : Error
     {
         public NotEnoughCoins(string message) : base(message)
         {
-        }
-
-        public NotEnoughCoins() : base("Not enough coins")
-        {
-            
         }
     }
 }

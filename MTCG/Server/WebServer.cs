@@ -1,71 +1,124 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using MTCG.Exception;
+using System.Threading.Tasks;
+using MTCG.Exceptions;
 using MTCG.Server.TcpWrapper;
+using Newtonsoft.Json;
 
 namespace MTCG.Server
 {
-    // listen and serve clients - REST style
+    /// <summary>
+    /// listen for clients and respond
+    /// </summary>
     public class WebServer
     {
         private bool _running;
+        private Func<Exception, ResponseContext> _exceptionHandler;
         private readonly Dictionary<string, Dictionary<string, Func<RequestContext, ResponseContext>>> _routes;
 
+        /// <summary>
+        /// Initialise webserver
+        /// </summary>
         public WebServer()
         {
             _routes = new Dictionary<string, Dictionary<string, Func<RequestContext, ResponseContext>>>();
             _running = false;
+            _exceptionHandler = null;
         }
 
+        public void AddExceptionHandler(Func<Exception, ResponseContext> handler)
+        {
+            _exceptionHandler = handler;
+        }
+
+        /// <summary>
+        /// launch webserver; required for listening for clients
+        /// </summary>
         public void Start()
         {
             _running = true;
         }
 
+        /// <summary>
+        /// stop webserver; stops listening for clients
+        /// </summary>
         public void Stop()
         {
             _running = false;
         }
 
-        // register an endpoint handler
+        /// <summary>
+        /// register an endpoint handler
+        /// </summary>
+        /// <param name="method"></param>
+        /// <param name="endpoint"></param>
+        /// <param name="handler"></param>
         public void RegisterRoute(string method, string endpoint, Func<RequestContext, ResponseContext> handler)
         {
+            endpoint = endpoint.Replace("?", "\\?");
+            
             if (!_routes.ContainsKey(endpoint))
             {
                 _routes[endpoint] = new Dictionary<string, Func<RequestContext, ResponseContext>>();
             }
+            
             _routes[endpoint][method] = handler;
             Console.WriteLine("Registered Route: " + endpoint + " (" + method + ")");
         }
 
-        // listen with self-made TcpListener
+        /// <summary>
+        /// listen for clients given on a given ip and port and serve their requests
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <param name="port"></param>
         public void Listen(string ip, int port)
         {
             var listener = new TcpListener(ip, port);
             Listen(listener);
         }
 
-        // listen with given TcpListener and serve client requests
-        public void Listen(ITcpListener listener)
+        /// <summary>
+        /// listen for clients given a ITcpListener and serve their requests
+        /// </summary>
+        /// <param name="listener"></param>
+        public async void Listen(ITcpListener listener)
         {
+            var clientTasks = new List<Task>();
             listener.Start();
+            
             while (_running)
             {
+                if (clientTasks.Count > 9)
+                {
+                    var taskArray = clientTasks.ToArray();
+                    int taskIndex = Task.WaitAny(taskArray);
+                    await taskArray[taskIndex];
+                    clientTasks.Remove(taskArray[taskIndex]);
+                }
+                
                 var client = listener.AcceptTcpClient();
-                ServeClient(client);
+                var clientTask = Task.Run(() => ServeClient(client));
+                clientTasks.Add(clientTask);
             }
+            
             listener.Stop();
         }
 
-        // interpret client request and send appropriate response
+        /// <summary>
+        /// interpret client request and send appropriate response
+        /// </summary>
+        /// <param name="tcpClient"></param>
         public void ServeClient(ITcpClient tcpClient)
         {
             try
             {
+                tcpClient.ReadRequest();
                 var request = tcpClient.GetRequest();
                 request.PrintProperties();
+                
                 var response = RouteRequest(request);
                 response.Headers["Connection"] = "close";
                 tcpClient.SendResponse(response);
@@ -79,16 +132,16 @@ namespace MTCG.Server
             {
                 Console.WriteLine("The client is not connected to a remote host.");
             }
-            catch
-            {
-                Console.WriteLine("Failed to send response to client.");
-            }
         }
 
-        // find and invoke requested route endpoints
+        /// <summary>
+        /// find endpoint that matches request and invoke it
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         private ResponseContext RouteRequest(RequestContext request)
         {
-            var response = new ResponseContext();
+            ResponseContext response;
 
             try
             {
@@ -96,52 +149,67 @@ namespace MTCG.Server
                 request.PathParam = GetParameters(request.Path, endpoint);
                 response = InvokeRoute(endpoint, request);
             }
-            catch (HttpException error)  // request format is invalid
+            catch (Exception error)
             {
-                response.Status = error.Status;
-                response.Content = error.Message;
-                response.ContentType = MediaType.Plaintext;
-            }
-            catch
-            {
-                response.Status = HttpStatus.InternalServerError;
-                response.Content = "An error has occurred.";
-                response.ContentType = MediaType.Plaintext;
+                if (_exceptionHandler is null)
+                {
+                    throw;
+                }
+                
+                return _exceptionHandler.Invoke(error);
             }
 
             return response;
         }
         
-        // invoke handler for given endpoint and method
+        /// <summary>
+        /// invoke handler for given endpoint and method
+        /// </summary>
+        /// <param name="endpoint"></param>
+        /// <param name="request"></param>
+        /// <returns></returns>
         private ResponseContext InvokeRoute(string endpoint, RequestContext request)
         {
             if (!_routes.ContainsKey(endpoint))
             {
-                throw new NotFoundException("Requested endpoint does not exist.");
+                return new ResponseContext(HttpStatus.NotFound);
             }
+            
             if (!_routes[endpoint].ContainsKey(request.Method))
             {
-                throw new MethodNotAllowedException("Endpoint does not support requested method.");
+                return new ResponseContext(HttpStatus.MethodNotAllowed);
             }
+            
             Console.WriteLine("Invoked route: " + endpoint + " (" + request.Method + ")");
             return _routes[endpoint][request.Method].Invoke(request);
         }
 
-        // returns matching endpoint
+        /// <summary>
+        /// returns matching endpoint
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         private string GetEndpoint(RequestContext request)
         {
             foreach ((string endpoint, _) in _routes)
             {
                 var match = MatchAgainstPattern(request.Path, endpoint);
+                
                 if (match.Success)
                 {
                     return endpoint;
                 }
             }
-            throw new NotFoundException("Requested endpoint does not exist.");
+
+            return string.Empty;
         }
 
-        // get values of placeholders that are set in uri pattern
+        /// <summary>
+        /// get values of placeholders that are set in uri pattern
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="uriPattern"></param>
+        /// <returns></returns>
         private static Dictionary<string, string> GetParameters(string uri, string uriPattern)
         {
             var uriParameters = new Dictionary<string, string>();
@@ -159,34 +227,53 @@ namespace MTCG.Server
             return uriParameters;
         }
 
-        // get regex match of uri against pattern
+        /// <summary>
+        /// get regex match of uri against pattern
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <param name="uriPattern"></param>
+        /// <returns></returns>
         private static Match MatchAgainstPattern(string uri, string uriPattern)
         {
             var placeholderNames = GetUriParameters(uriPattern);
+            
             foreach (string name in placeholderNames)
             {
                 string placeholder = "{" + name + "}";
-                uriPattern = uriPattern.Replace(placeholder, "([a-zA-Z0-9]+)");
+                uriPattern = uriPattern.Replace(placeholder, "([a-zA-Z0-9-]+)");
             }
+            
             uriPattern = "^" + uriPattern + "$";
             return Regex.Match(uri, uriPattern);
         }
 
-        // get all the placeholders in a uri pattern
+        /// <summary>
+        /// get all the placeholders in a uri pattern
+        /// </summary>
+        /// <param name="uriPattern"></param>
+        /// <returns></returns>
         private static List<string> GetUriParameters(string uriPattern)
         {
             var parameters = new List<string>();
+            
             string parameter;
-            while ((parameter = GetStrBetween(uriPattern, "{", "}")) != string.Empty)
+            while ((parameter = GetStringBetween(uriPattern, "{", "}")) != string.Empty)
             {
                 uriPattern = uriPattern.Replace("{" + parameter + "}", "");
                 parameters.Add(parameter);
             }
+            
             return parameters;
         }
 
-        // get next placeholder in uri pattern
-        private static string GetStrBetween(string str, string strStart, string strEnd)
+        /// <summary>
+        /// get string between two substrings
+        /// </summary>
+        /// <param name="str"></param>
+        /// <param name="strStart"></param>
+        /// <param name="strEnd"></param>
+        /// <returns></returns>
+        private static string GetStringBetween(string str, string strStart, string strEnd)
         {
             int i = str.IndexOf(strStart, StringComparison.Ordinal);
             
